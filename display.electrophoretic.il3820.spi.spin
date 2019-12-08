@@ -112,6 +112,35 @@ PUB PowerOn | tmp
     tmp := $FF
     writeReg( core#DISP_UPDATE_CTRL2, 1, @tmp)
 
+PUB Refresh | tmp, width, height
+
+    width.byte[1] := ((_disp_width - 1) >> 3) & $FF
+    width.byte[0] := 0
+
+    height.byte[3] := ((_disp_height - 1) >> 8) & $FF
+    height.byte[2] := (_disp_height - 1) & $FF
+    height.byte[1] := 0
+    height.byte[0] := 0
+
+    tmp.byte[0] := $00
+    tmp.byte[1] := $00
+
+    writeReg(core#RAM_X_ADDR, 2, @width)
+    writeReg(core#RAM_Y_ADDR, 4, @height)
+    writeReg(core#RAM_X_ADDR_AC, 1, @tmp)
+    writeReg(core#RAM_Y_ADDR_AC, 2, @tmp)
+
+    repeat until Busy == 0
+        time.MSleep (2)
+
+    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
+    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+    writeReg(core#MASTER_ACT, 0, 0)
+    writeReg(core#NOOP, 0, 0)
+
+    repeat until Busy == 0
+        time.MSleep (2)
+
 PUB Reset | tmp
 
     io.Low (_RESET)
@@ -144,35 +173,6 @@ PUB Reset | tmp
     writeReg( core#WRITE_LUT_REG, 30, @lut_update)
 
     repeat until Busy == 0
-
-PUB Refresh | tmp, width, height
-
-    width.byte[1] := ((_disp_width - 1) >> 3) & $FF
-    width.byte[0] := 0
-
-    height.byte[3] := ((_disp_height - 1) >> 8) & $FF
-    height.byte[2] := (_disp_height - 1) & $FF
-    height.byte[1] := 0
-    height.byte[0] := 0
-
-    tmp.byte[0] := $00
-    tmp.byte[1] := $00
-
-    writeReg(core#RAM_X_ADDR, 2, @width)
-    writeReg(core#RAM_Y_ADDR, 4, @height)
-    writeReg(core#RAM_X_ADDR_AC, 1, @tmp)
-    writeReg(core#RAM_Y_ADDR_AC, 2, @tmp)
-
-    repeat until Busy == 0
-        time.MSleep (2)
-
-    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
-    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
-    writeReg(core#MASTER_ACT, 0, 0)
-    writeReg(core#NOOP, 0, 0)
-
-    repeat until Busy == 0
-        time.MSleep (2)
 
 pub dump_lut
 
