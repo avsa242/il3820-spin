@@ -58,7 +58,7 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_
             _buff_sz := _disp_width * ((_disp_height + 7) >> 3)
 
             Reset
-            Clear
+            ClearAccel
             Update
             return okay
 
@@ -81,11 +81,10 @@ pub buffsz
 
     return _buff_sz
 
-PUB Clear
-
+PUB ClearAccel
+' Clear the display immediately
     bytefill(_draw_buffer, $FF, _buff_sz)
-'    Bitmap (_draw_buffer, _buff_sz)
-'    Update
+    Update
 
 PUB DrawBuffer(address)
 
@@ -93,18 +92,6 @@ PUB DrawBuffer(address)
         _draw_buffer := address
     else
         return _draw_buffer
-
-PUB Plot(x, y, c) | tmp
-
-    case c
-        1:
-            byte[_draw_buffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
-        0:
-            byte[_draw_buffer][(x + y * _disp_width) >> 3] &= !($80 >> (x & 7))
-        -1:
-            byte[_draw_buffer][(x + y * _disp_width) >> 3] ^= $80 >> (x & 7)
-        OTHER:
-            return FALSE
 
 PUB PowerOn | tmp
 

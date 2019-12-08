@@ -51,7 +51,7 @@ PUB Main | i, la
     ser.Position (0, 3)
     ser.Str (string("Ready", ser#CR, ser#LF))
     ser.str (string("Clearing..."))
-    eink.Clear
+    eink.ClearAccel
     repeat until not eink.Busy
     ser.str (string("done", ser#CR, ser#LF))
 
@@ -64,7 +64,6 @@ PUB Main | i, la
     repeat until not eink.Busy
     ser.str (string("done", ser#CR, ser#LF))
 
-'    eink.Update
     FlashLED (LED, 100)
 
 PUB Setup
