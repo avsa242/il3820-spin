@@ -75,8 +75,7 @@ PUB Bitmap(buff_addr, nr_bytes) | tmp
 
 PUB Busy
 
-'    return io.Input (_BUSY) == 1
-    return ina[_BUSY]
+    return io.Input(_BUSY)
 
 pub buffsz
 
@@ -130,7 +129,7 @@ PUB Refresh | tmp, width, height
     writeReg(core#RAM_X_ADDR_AC, 1, @tmp)
     writeReg(core#RAM_Y_ADDR_AC, 2, @tmp)
 
-    repeat until Busy == 0
+    repeat until not Busy
         time.MSleep (2)
 
     tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
@@ -138,7 +137,7 @@ PUB Refresh | tmp, width, height
     writeReg(core#MASTER_ACT, 0, 0)
     writeReg(core#NOOP, 0, 0)
 
-    repeat until Busy == 0
+    repeat until not Busy
         time.MSleep (2)
 
 PUB Reset | tmp
@@ -173,6 +172,12 @@ PUB Reset | tmp
     writeReg( core#WRITE_LUT_REG, 30, @lut_update)
 
     repeat until Busy == 0
+
+PUB Update
+' Send the draw buffer to the display
+    writeReg(core#WRITE_RAM, _buff_sz, _draw_buffer)
+    Refresh
+    repeat until not Busy
 
 pub dump_lut
 

@@ -46,22 +46,22 @@ PUB Main | i, la
     Setup
     ser.Position (0, 3)
 
-    repeat until eink.Busy == 0
+    repeat until not eink.Busy
 
     ser.Position (0, 3)
     ser.Str (string("Ready", ser#CR, ser#LF))
     ser.str (string("Clearing..."))
     eink.Clear
-    repeat until eink.Busy == 0
+    repeat until not eink.Busy
     ser.str (string("done", ser#CR, ser#LF))
 
     ser.str (string("writing bitmap..."))
     bytefill(@_draw_buff, $FF, BUFF_SZ)
     bytemove(@_draw_buff, @beanie, 1024)
     eink.Bitmap(@_draw_buff, BUFF_SZ)
-    eink.Update
+    eink.Refresh
 
-    repeat until eink.Busy == 0
+    repeat until not eink.Busy
     ser.str (string("done", ser#CR, ser#LF))
 
 '    eink.Update
