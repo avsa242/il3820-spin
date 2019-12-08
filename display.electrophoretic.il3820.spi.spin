@@ -77,10 +77,6 @@ PUB Busy
 
     return io.Input(_BUSY)
 
-pub buffsz
-
-    return _buff_sz
-
 PUB ClearAccel
 ' Clear the display immediately
     bytefill(_draw_buffer, $FF, _buff_sz)
@@ -165,10 +161,6 @@ PUB Update
     writeReg(core#WRITE_RAM, _buff_sz, _draw_buffer)
     Refresh
     repeat until not Busy
-
-pub dump_lut
-
-    return @lut_update
 
 PRI writeReg(reg, nr_bytes, buff_addr) | i
 ' Write nr_bytes of data from buff_addr to register 'reg'

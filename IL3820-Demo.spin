@@ -74,13 +74,7 @@ PUB Setup
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     eink.DrawBuffer (@_draw_buff)
     if eink.Start (CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_HEIGHT)
-        ser.Str (string("IL3820 driver started (disp addr $"))
-        ser.Hex (eink.DrawBuffer (-2), 4)
-        ser.Str (string(", size "))
-        ser.Dec (BUFF_SZ)
-        ser.Char ("/")
-        ser.Dec (eink.buffsz)
-        ser.Str (string(" bytes)"))
+        ser.Str (string("IL3820 driver started"))
     else
         ser.Str (string("IL3820 driver failed to start - halting"))
         eink.Stop
