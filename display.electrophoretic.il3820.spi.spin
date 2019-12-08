@@ -145,7 +145,7 @@ PUB Reset | tmp
 
     repeat until Busy == 0
 
-PUB Update | tmp, width, height
+PUB Refresh | tmp, width, height
 
     width.byte[1] := ((_disp_width - 1) >> 3) & $FF
     width.byte[0] := 0
