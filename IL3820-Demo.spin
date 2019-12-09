@@ -35,6 +35,7 @@ OBJ
     time    : "time"
     io      : "io"
     eink    : "display.electrophoretic.il3820.spi"
+    fnt     : "font.5x8"
 
 VAR
 
@@ -57,9 +58,11 @@ PUB Main | i, la
 
     ser.str (string("writing bitmap..."))
     bytefill(@_draw_buff, $FF, BUFF_SZ)
-    bytemove(@_draw_buff, @beanie, 1024)
-    eink.Bitmap(@_draw_buff, BUFF_SZ)
-    eink.Refresh
+    eink.FGColor(0)
+    eink.BGColor(1)
+    eink.Position(0, 0)
+    eink.Str(string("HELLO WORLD"))
+    eink.Update
 
     repeat until not eink.Busy
     ser.str (string("done", ser#CR, ser#LF))
@@ -73,6 +76,8 @@ PUB Setup
     ser.Clear
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     eink.DrawBuffer (@_draw_buff)
+    eink.FontAddress(fnt.BaseAddr)
+    eink.FontSize(5, 7)
     if eink.Start (CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_HEIGHT)
         ser.Str (string("IL3820 driver started"))
     else

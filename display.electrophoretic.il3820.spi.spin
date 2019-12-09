@@ -12,6 +12,7 @@
 
 CON
 
+    MAX_COLOR   = 1
 
 VAR
 
@@ -67,11 +68,6 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_
 PUB Stop
 
     spi.stop
-
-PUB Bitmap(buff_addr, nr_bytes) | tmp
-
-    repeat until Busy == 0
-    writeReg(core#WRITE_RAM, nr_bytes, buff_addr)
 
 PUB Busy
 
@@ -190,7 +186,7 @@ DAT
                 byte    $69, $59, $58, $99, $99, $88, $00, $00, $00, $00
                 byte    $F8, $B4, $13, $51, $35, $51, $51, $19, $01, $00
 
-'#include "lib.gfx.bitmap.spin"
+#include "lib.gfx.bitmap.spin"
 
 DAT
 {
