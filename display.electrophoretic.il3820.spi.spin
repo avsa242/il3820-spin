@@ -78,6 +78,26 @@ PUB ClearAccel
     bytefill(_draw_buffer, $FF, _buff_sz)
     Update
 
+PUB DataEntryMode(mode)
+' Define data entry sequence
+'   Valid values:
+'       Bit %2_10
+'           2: Address counter update direction
+'              *0: X direction
+'               1: Y direction
+'           10: Increment/decrement address counter:
+'               00: Y dec, X dec
+'               01: Y dec, X inc
+'               10: Y inc, X dec
+'              *11: Y inc, X inc
+'   Any other value is ignored
+    tmp := $00
+    case mode
+        %0_00..%1_11:
+        OTHER:
+            return FALSE
+    writeReg(core#DATA_ENTRY_MODE, 1, @mode)
+
 PUB DrawBuffer(address)
 
     if address > 0
@@ -145,8 +165,7 @@ PUB Reset | tmp
     tmp := $08
     writeReg( core#GATE_LINE_WIDTH, 1, @tmp)
 
-    tmp := $07'$03
-    writeReg( core#DATA_ENTRY_MODE, 1, @tmp)
+    DataEntryMode(%1_11)
 
     writeReg( core#WRITE_LUT_REG, 30, @lut_update)
 
