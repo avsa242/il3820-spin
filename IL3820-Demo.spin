@@ -5,7 +5,7 @@
     Description: Demo of the IL3820 driver
     Copyright (c) 2019
     Started Nov 30, 2019
-    Updated Dec 1, 2019
+    Updated Dec 8, 2019
     See end of file for terms of use.
     --------------------------------------------
 }

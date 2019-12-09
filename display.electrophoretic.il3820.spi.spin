@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: display.electrophoretic.il3820.spi.spin
-    Author:
-    Description:
+    Author: Jesse Burt
+    Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2019
     Started Nov 30, 2019
-    Updated Nov 30, 2019
+    Updated Dec 8, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
