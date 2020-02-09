@@ -3,9 +3,9 @@
     Filename: IL3820-Demo.spin
     Author: Jesse Burt
     Description: Demo of the IL3820 driver
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Nov 30, 2019
-    Updated Dec 8, 2019
+    Updated Feb 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,45 +26,50 @@ CON
 
     DISP_WIDTH  = 128
     DISP_HEIGHT = 296
+    DISP_XMAX   = DISP_WIDTH-1
+    DISP_YMAX   = DISP_HEIGHT-1
     BUFF_SZ     = DISP_WIDTH * ((DISP_HEIGHT + 7) >> 3)
-'width * ((height + 7) >> 3)
+
 OBJ
 
     cfg     : "core.con.boardcfg.activityboard"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     io      : "io"
-    eink    : "display.electrophoretic.il3820.spi"
+    epaper  : "display.electrophoretic.il3820.spi"
     fnt     : "font.5x8"
 
 VAR
 
-    byte _draw_buff[BUFF_SZ]
+    byte _framebuff[BUFF_SZ]
     byte _ser_cog
 
-PUB Main | i, la
+PUB Main | i
 
     Setup
     ser.Position (0, 3)
 
-    repeat until not eink.Busy
+    repeat until not epaper.Busy
 
     ser.Position (0, 3)
     ser.Str (string("Ready", ser#CR, ser#LF))
-    ser.str (string("Clearing..."))
-    eink.ClearAccel
-    repeat until not eink.Busy
-    ser.str (string("done", ser#CR, ser#LF))
+    ser.str (string("Writing bitmap..."))
+    epaper.BGColor($FF)
+    epaper.Clear
+    epaper.FGColor(0)
+    epaper.Box(0, 0, DISP_XMAX, DISP_YMAX, 0, FALSE)
+    epaper.Position(5, 5)
+    epaper.Str(string("HELLO WORLD"))
 
-    ser.str (string("writing bitmap..."))
-    bytefill(@_draw_buff, $FF, BUFF_SZ)
-    eink.FGColor(0)
-    eink.BGColor(1)
-    eink.Position(0, 0)
-    eink.Str(string("HELLO WORLD"))
-    eink.Update
+    epaper.Line(0, 0, 100, 100, 0)
+    repeat i from 0 to 64 step 10
+        epaper.Circle(64, 148, i, 0)
 
-    repeat until not eink.Busy
+    repeat i from 0 to 100
+        epaper.Plot(127-i, i, 0)
+    epaper.Box(28, 100, 100, 200, 0, FALSE)
+    epaper.Refresh
+
     ser.str (string("done", ser#CR, ser#LF))
 
     FlashLED (LED, 100)
@@ -75,24 +80,18 @@ PUB Setup
     time.msleep(100)
     ser.Clear
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    eink.DrawBuffer (@_draw_buff)
-    eink.FontAddress(fnt.BaseAddr)
-    eink.FontSize(5, 7)
-    if eink.Start (CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_HEIGHT)
+    if epaper.Start (DISP_WIDTH, DISP_HEIGHT, CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, @_framebuff)
         ser.Str (string("IL3820 driver started"))
+        epaper.FontAddress(fnt.BaseAddr)
+        epaper.FontSize(6, 7)
     else
         ser.Str (string("IL3820 driver failed to start - halting"))
-        eink.Stop
+        epaper.Stop
         time.MSleep (500)
         ser.Stop
         FlashLED (LED, 500)
 
-PUB FlashLED(led_pin, delay_ms)
-
-    io.Output (led_pin)
-    repeat
-        io.Toggle (led_pin)
-        time.MSleep (delay_ms)
+#include "lib.utility.spin"
 
 DAT
 '1024 bytes

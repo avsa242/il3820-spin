@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: core.con.il3820.spin
-    Author:
-    Description:
-    Copyright (c) 2019
+    Author: Jesse Burt
+    Description: Low-level constants
+    Copyright (c) 2020
     Started Nov 30, 2019
-    Updated Nov 30, 2019
+    Updated Feb 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }

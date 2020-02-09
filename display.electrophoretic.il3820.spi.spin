@@ -3,21 +3,24 @@
     Filename: display.electrophoretic.il3820.spi.spin
     Author: Jesse Burt
     Description: Driver for the IL3820 electrophoretic display controller
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Nov 30, 2019
-    Updated Dec 8, 2019
+    Updated Feb 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
+#define IL3820
+#include "lib.gfx.bitmap.spin"
 
 CON
 
-    MAX_COLOR   = 1
+    MSB         = 1
+    LSB         = 0
 
 VAR
 
     long _draw_buffer, _buff_sz
-    long _disp_width, _disp_height
+    long _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
 
 OBJ
@@ -30,7 +33,7 @@ OBJ
 PUB Null
 ''This is not a top-level object
 
-PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_HEIGHT): okay
+PUB Start(width, height, CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, dispbuffer_address): okay
 
     if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
         if okay := spi.start (core#CLK_DELAY, core#SCK_CPOL)
@@ -46,23 +49,20 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_WIDTH, DISP_
             io.Output (_DC)
             io.Output (_RESET)
 
-            outa[_SCK] := core#SCK_CPOL
-            io.Output (_SCK)
-            io.Output (_MOSI)
-
             io.High (_CS)
             io.Low (_DC)
             io.High (_RESET)
 
-            _disp_width := DISP_WIDTH
-            _disp_height := DISP_HEIGHT
-            _buff_sz := _disp_width * ((_disp_height + 7) >> 3)
-
+            _disp_width := width
+            _disp_height := height
+            _disp_xmax := _disp_width-1
+            _disp_ymax := _disp_height-1
+            _buff_sz := _disp_width * ((_disp_height + 7) / 8)
+            Address(dispbuffer_address)
             Reset
             ClearAccel
             Update
             return okay
-
     return FALSE                                                'If we got here, something went wrong
 
 PUB Stop
@@ -73,10 +73,20 @@ PUB Busy
 
     return io.Input(_BUSY)
 
+PUB Address(addr)
+' Set framebuffer address
+    case addr
+        $0004..$7FFF-_buff_sz:
+            _draw_buffer := addr
+        OTHER:
+            return _draw_buffer
+
 PUB ClearAccel
 ' Clear the display immediately
     bytefill(_draw_buffer, $FF, _buff_sz)
-    Update
+    Refresh
+'    Update
+'    repeat until not Busy
 
 PUB DataEntryMode(mode)
 ' Define data entry sequence
@@ -91,53 +101,45 @@ PUB DataEntryMode(mode)
 '               10: Y inc, X dec
 '              *11: Y inc, X inc
 '   Any other value is ignored
-    tmp := $00
     case mode
         %0_00..%1_11:
         OTHER:
             return FALSE
     writeReg(core#DATA_ENTRY_MODE, 1, @mode)
 
-PUB DrawBuffer(address)
+PUB DisplayBounds(sx, sy, ex, ey) | width, height, tmp
 
-    if address > 0
-        _draw_buffer := address
-    else
-        return _draw_buffer
+    width.byte[1] := ex >> 3
+    width.byte[0] := sx >> 3
+
+    height.byte[3] := ey.byte[1]
+    height.byte[2] := ey.byte[0]
+    height.byte[1] := sy.byte[1]
+    height.byte[0] := sy.byte[0]
+
+    writeReg(core#RAM_X_ADDR, 2, @width)
+    writeReg(core#RAM_Y_ADDR, 4, @height)
 
 PUB PowerOn | tmp
 
     tmp := $FF
-    writeReg( core#DISP_UPDATE_CTRL2, 1, @tmp)
+    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
 
 PUB Refresh | tmp, width, height
 
-    width.byte[1] := ((_disp_width - 1) >> 3) & $FF
-    width.byte[0] := 0
-
-    height.byte[3] := ((_disp_height - 1) >> 8) & $FF
-    height.byte[2] := (_disp_height - 1) & $FF
-    height.byte[1] := 0
-    height.byte[0] := 0
-
-    tmp.byte[0] := $00
-    tmp.byte[1] := $00
-
-    writeReg(core#RAM_X_ADDR, 2, @width)
-    writeReg(core#RAM_Y_ADDR, 4, @height)
-    writeReg(core#RAM_X_ADDR_AC, 1, @tmp)
-    writeReg(core#RAM_Y_ADDR_AC, 2, @tmp)
+    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
+    SetXY(0, 0)
 
     repeat until not Busy
-        time.MSleep (2)
 
+    Update
     tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
     writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
     writeReg(core#MASTER_ACT, 0, 0)
     writeReg(core#NOOP, 0, 0)
 
     repeat until not Busy
-        time.MSleep (2)
+'        time.MSleep (2)
 
 PUB Reset | tmp
 
@@ -146,8 +148,8 @@ PUB Reset | tmp
     io.High (_RESET)
     time.MSleep (200)
 
-    tmp.byte[0] := (_disp_height - 1) & $FF
-    tmp.byte[1] := ((_disp_height - 1) >> 8) & $FF
+    tmp.byte[0] := _disp_height.byte[LSB]'(_disp_height - 1) & $FF
+    tmp.byte[1] := _disp_height.byte[MSB]'((_disp_height - 1) >> 8) & $FF
     tmp.byte[2] := $00
     writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
 
@@ -165,17 +167,26 @@ PUB Reset | tmp
     tmp := $08
     writeReg( core#GATE_LINE_WIDTH, 1, @tmp)
 
-    DataEntryMode(%1_11)
+    DataEntryMode(%0_11)
 
     writeReg( core#WRITE_LUT_REG, 30, @lut_update)
 
-    repeat until Busy == 0
+    repeat until not Busy
+
+'    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
+    DisplayBounds(_disp_width-1, _disp_height-1, 0, 0)
+    SetXY(0, 0)
+
+PUB SetXY(x, y)
+
+    writeReg(core#RAM_X_ADDR_AC, 1, @y)
+    writeReg(core#RAM_Y_ADDR_AC, 2, @x)
 
 PUB Update
 ' Send the draw buffer to the display
     writeReg(core#WRITE_RAM, _buff_sz, _draw_buffer)
-    Refresh
-    repeat until not Busy
+'    Refresh
+'    repeat until not Busy
 
 PRI writeReg(reg, nr_bytes, buff_addr) | i
 ' Write nr_bytes of data from buff_addr to register 'reg'
@@ -204,8 +215,6 @@ DAT
     lut_update  byte    $02, $02, $01, $11, $12, $12, $22, $22, $66, $69
                 byte    $69, $59, $58, $99, $99, $88, $00, $00, $00, $00
                 byte    $F8, $B4, $13, $51, $35, $51, $51, $19, $01, $00
-
-#include "lib.gfx.bitmap.spin"
 
 DAT
 {
