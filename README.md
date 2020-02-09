@@ -22,4 +22,4 @@ This is a P8X32A/Propeller driver object for the IL3820 electrophoretic (E-Ink, 
 * Most initialization and setup code for the display is currently hardcoded
 
 ## TODO
-
+- [ ] Clean up driver - rewrite some currently low-level 'magic' looking code to HLL-equivalents
