@@ -19,7 +19,7 @@ CON
 
 VAR
 
-    long _draw_buffer, _buff_sz
+    long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
 
@@ -77,13 +77,13 @@ PUB Address(addr)
 ' Set framebuffer address
     case addr
         $0004..$7FFF-_buff_sz:
-            _draw_buffer := addr
+            _ptr_drawbuffer := addr
         OTHER:
-            return _draw_buffer
+            return _ptr_drawbuffer
 
 PUB ClearAccel
 ' Clear the display immediately
-    bytefill(_draw_buffer, $FF, _buff_sz)
+    bytefill(_ptr_drawbuffer, $FF, _buff_sz)
     Refresh
 '    Update
 '    repeat until not Busy
@@ -184,7 +184,7 @@ PUB SetXY(x, y)
 
 PUB Update
 ' Send the draw buffer to the display
-    writeReg(core#WRITE_RAM, _buff_sz, _draw_buffer)
+    writeReg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)
 '    Refresh
 '    repeat until not Busy
 
