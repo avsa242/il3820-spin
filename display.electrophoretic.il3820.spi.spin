@@ -120,6 +120,13 @@ PUB DisplayBounds(sx, sy, ex, ey) | width, height, tmp
     writeReg(core#RAM_X_ADDR, 2, @width)
     writeReg(core#RAM_Y_ADDR, 4, @height)
 
+PUB DisplayLines(lines) | tmp
+
+    tmp.byte[0] := lines.byte[LSB]
+    tmp.byte[1] := lines.byte[MSB]
+    tmp.byte[2] := $00
+    writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
+
 PUB PowerOn | tmp
 
     tmp := $FF
@@ -148,10 +155,7 @@ PUB Reset | tmp
     io.High (_RESET)
     time.MSleep (200)
 
-    tmp.byte[0] := _disp_height.byte[LSB]'(_disp_height - 1) & $FF
-    tmp.byte[1] := _disp_height.byte[MSB]'((_disp_height - 1) >> 8) & $FF
-    tmp.byte[2] := $00
-    writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
+    DisplayLines(_disp_height)
 
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
