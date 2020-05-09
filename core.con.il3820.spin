@@ -14,7 +14,8 @@ CON
 
 ' SPI Configuration
     SCK_CPOL                    = 0
-    CLK_DELAY                   = 10             ' Max is 4MHz
+    CLK_DELAY                   = 1
+    SCK_MAX_FREQ                = 4_000_000
     MOSI_BITORDER               = 5             'MSBFIRST
 
 ' Register definitions

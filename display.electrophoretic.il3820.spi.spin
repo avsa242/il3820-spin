@@ -124,7 +124,7 @@ PUB DisplayLines(lines) | tmp
 
     tmp.byte[0] := lines.byte[LSB]
     tmp.byte[1] := lines.byte[MSB]
-    tmp.byte[2] := $00
+    tmp.byte[2] := %000             ' 1=Interlaced LSB=MirrorV
     writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
 
 PUB PowerOn | tmp
@@ -146,7 +146,6 @@ PUB Refresh | tmp, width, height
     writeReg(core#NOOP, 0, 0)
 
     repeat until not Busy
-'        time.MSleep (2)
 
 PUB Reset | tmp
 
@@ -177,8 +176,7 @@ PUB Reset | tmp
 
     repeat until not Busy
 
-'    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
-    DisplayBounds(_disp_width-1, _disp_height-1, 0, 0)
+    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
     SetXY(0, 0)
 
 PUB SetXY(x, y)
