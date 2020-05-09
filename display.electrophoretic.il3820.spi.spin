@@ -22,6 +22,7 @@ VAR
     long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
+    byte _shadow_regs[40]
 
 OBJ
 
@@ -69,6 +70,11 @@ PUB Stop
 
     spi.stop
 
+PUB Defaults
+' Factory defaults
+    GateHighVoltage(22_000)
+    GateLowVoltage(-20_000)
+
 PUB Busy
 
     return io.Input(_BUSY)
@@ -107,18 +113,18 @@ PUB DataEntryMode(mode)
             return FALSE
     writeReg(core#DATA_ENTRY_MODE, 1, @mode)
 
-PUB DisplayBounds(sx, sy, ex, ey) | width, height, tmp
+PUB DisplayBounds(sx, sy, ex, ey) | x, y
+' Set drawable display region for subsequent drawing operations
+    x.byte[1] := ex >> 3
+    x.byte[0] := sx >> 3
 
-    width.byte[1] := ex >> 3
-    width.byte[0] := sx >> 3
+    y.byte[3] := ey.byte[1]
+    y.byte[2] := ey.byte[0]
+    y.byte[1] := sy.byte[1]
+    y.byte[0] := sy.byte[0]
 
-    height.byte[3] := ey.byte[1]
-    height.byte[2] := ey.byte[0]
-    height.byte[1] := sy.byte[1]
-    height.byte[0] := sy.byte[0]
-
-    writeReg(core#RAM_X_ADDR, 2, @width)
-    writeReg(core#RAM_Y_ADDR, 4, @height)
+    writeReg(core#RAM_X_ST_END, 2, @x)
+    writeReg(core#RAM_Y_ST_END, 4, @y)
 
 PUB DisplayLines(lines) | tmp
 
@@ -126,6 +132,51 @@ PUB DisplayLines(lines) | tmp
     tmp.byte[1] := lines.byte[MSB]
     tmp.byte[2] := %000             ' 1=Interlaced LSB=MirrorV
     writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
+
+PUB DummyLinePeriod(TGate) | tmp
+' Set dummy line period, in units TGate (1 TGate = line width in uSec)
+    tmp := $00
+    readReg(core#DUMMY_LINE_PER, 1, @tmp)
+    case TGate
+        0..127:
+        OTHER:
+            return tmp
+
+    writeReg(core#DUMMY_LINE_PER, 1, @tmp)
+
+PUB GateHighVoltage(mV) | tmp
+' Set gate driving voltage (high level), in millivolts
+'   Valid values: 15_000..22_000 (default 22_000)
+'   Any other value returns the current setting
+    tmp := $00
+    readReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    case mV
+        15_000..22_000:
+            mV := ((mV / 500) - 30) << core#FLD_VGH
+        OTHER:
+            tmp := (tmp >> core#FLD_VGH) & core#BITS_VGH
+            return ((tmp + 30) * 500)
+
+    mV &= core#MASK_VGH
+    tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
+    writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+
+PUB GateLowVoltage(mV) | tmp
+' Set gate driving voltage (low level), in millivolts
+'   Valid values: -20_000..-15_000 (default: -20_000)
+'   Any other value returns the current setting
+    tmp := $00
+    readReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    case mV
+        -20_000..-15_000:
+            mV := (||mV / 500) - 30
+        OTHER:
+            tmp &= core#BITS_VGL
+            return ((tmp + 30) * 500) * -1
+
+    mV &= core#MASK_VGL
+    tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
+    writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
 
 PUB PowerOn | tmp
 
@@ -149,12 +200,18 @@ PUB Refresh | tmp, width, height
 
 PUB Reset | tmp
 
+'   2 HW Reset
     io.Low (_RESET)
     time.MSleep (200)
     io.High (_RESET)
     time.MSleep (200)
 
-    DisplayLines(_disp_height)
+'   3
+    DisplayLines(_disp_height)                                  ' MUX
+    GateHighVoltage(22_000)                                     ' VGH
+    GateLowVoltage(-20_000)                                     ' VGL
+
+    DummyLinePeriod(26)
 
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
@@ -163,9 +220,6 @@ PUB Reset | tmp
 
     tmp := $A8
     writeReg( core#WRITE_VCOM_REG, 1, @tmp)
-
-    tmp := $1A
-    writeReg( core#DUMMY_LINE_PER, 1, @tmp)
 
     tmp := $08
     writeReg( core#GATE_LINE_WIDTH, 1, @tmp)
@@ -193,6 +247,19 @@ PUB Update
 PUB WriteLUT(ptr_lut)
 ' Write display-specific pixel waveform LookUp Table
     writeReg( core#WRITE_LUT_REG, 30, ptr_lut)
+
+PRI readReg(reg, nr_bytes, buff_addr) | tmp
+
+    case reg
+        core#GATEDRV_VOLT_CTRL:
+            byte[buff_addr][0] := _shadow_regs[core#SH_GATEDRV_VOLT_CTRL]
+        core#DUMMY_LINE_PER:
+            byte[buff_addr][0] := _shadow_regs[core#SH_DUMMY_LINE_PER]
+        core#BOOSTER_SOFTST_CTRL:
+            repeat tmp from 0 to nr_bytes-1
+                byte[buff_addr][tmp] := _shadow_regs[core#SH_BOOSTER_SOFTST_CTRL+tmp]
+        OTHER:
+            return
 
 PRI writeReg(reg, nr_bytes, buff_addr) | i
 ' Write nr_bytes of data from buff_addr to register 'reg'
