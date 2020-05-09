@@ -210,7 +210,7 @@ PUB Reset | tmp
     DisplayLines(_disp_height)                                  ' MUX
     GateHighVoltage(22_000)                                     ' VGH
     GateLowVoltage(-20_000)                                     ' VGL
-
+    SourceVoltage(15_000)                                       ' VSH/VSL
     DummyLinePeriod(26)
 
     tmp.byte[0] := $D7
@@ -237,6 +237,18 @@ PUB SetXY(x, y)
 
     writeReg(core#RAM_X_ADDR_AC, 1, @y)
     writeReg(core#RAM_Y_ADDR_AC, 2, @x)
+
+PUB SourceVoltage(mV)
+' Set source drive level, in millivolts
+'   Valid values: 10_000..17_000
+'   Any other value is ignored
+    case mV
+        10_000..17_000:
+            mV := (mV / 500) - 20
+        OTHER:
+            return
+
+    writeReg(core#SRCDRV_VOLT_CTRL, 1, @mV)
 
 PUB Update
 ' Send the draw buffer to the display
