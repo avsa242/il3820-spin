@@ -172,7 +172,7 @@ PUB Reset | tmp
 
     DataEntryMode(%0_11)
 
-    writeReg( core#WRITE_LUT_REG, 30, @lut_update)
+    WriteLUT(@lut_update)
 
     repeat until not Busy
 
@@ -189,6 +189,10 @@ PUB Update
     writeReg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)
 '    Refresh
 '    repeat until not Busy
+
+PUB WriteLUT(ptr_lut)
+' Write display-specific pixel waveform LookUp Table
+    writeReg( core#WRITE_LUT_REG, 30, ptr_lut)
 
 PRI writeReg(reg, nr_bytes, buff_addr) | i
 ' Write nr_bytes of data from buff_addr to register 'reg'
