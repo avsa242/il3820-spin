@@ -161,6 +161,18 @@ PUB GateHighVoltage(mV) | tmp
     tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
     writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
 
+PUB GateLineWidth(uS)
+' Set gate line width, in microseconds (figure TGate)
+'   Valid values: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
+'   Any other value is ignored
+    case uS
+        30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208:
+            uS := lookdownz(uS: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208)
+        OTHER:
+            return
+
+    writeReg(core#GATE_LINE_WIDTH, 1, @uS)
+
 PUB GateLowVoltage(mV) | tmp
 ' Set gate driving voltage (low level), in millivolts
 '   Valid values: -20_000..-15_000 (default: -20_000)
@@ -212,6 +224,7 @@ PUB Reset | tmp
     GateLowVoltage(-20_000)                                     ' VGL
     SourceVoltage(15_000)                                       ' VSH/VSL
     DummyLinePeriod(26)
+    GateLineWidth(62)
 
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
@@ -220,9 +233,6 @@ PUB Reset | tmp
 
     tmp := $A8
     writeReg( core#WRITE_VCOM_REG, 1, @tmp)
-
-    tmp := $08
-    writeReg( core#GATE_LINE_WIDTH, 1, @tmp)
 
     DataEntryMode(%0_11)
 
