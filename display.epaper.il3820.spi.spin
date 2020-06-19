@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2020
     Started Nov 30, 2019
-    Updated Feb 9, 2020
+    Updated Jun 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,6 +14,9 @@
 
 CON
 
+    MAX_COLOR   = 1
+    BYTESPERPX  = 1
+
     MSB         = 1
     LSB         = 0
 
@@ -21,6 +24,7 @@ VAR
 
     long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
+    word BYTESPERLN
     byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
     byte _shadow_regs[40]
 
@@ -34,7 +38,7 @@ OBJ
 PUB Null
 ''This is not a top-level object
 
-PUB Start(width, height, CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, dispbuffer_address): okay
+PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, dispbuffer_address): okay
 
     if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
         if okay := spi.start (core#CLK_DELAY, core#SCK_CPOL)
@@ -54,15 +58,15 @@ PUB Start(width, height, CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, di
             io.Low (_DC)
             io.High (_RESET)
 
-            _disp_width := width
-            _disp_height := height
+            _disp_width := WIDTH
+            _disp_height := HEIGHT
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
             _buff_sz := _disp_width * ((_disp_height + 7) / 8)
+            BYTESPERLN := _disp_width * BYTESPERPX
             Address(dispbuffer_address)
             Reset
             ClearAccel
-            Update
             return okay
     return FALSE                                                'If we got here, something went wrong
 
@@ -75,10 +79,6 @@ PUB Defaults
     GateHighVoltage(22_000)
     GateLowVoltage(-20_000)
 
-PUB Busy
-
-    return io.Input(_BUSY)
-
 PUB Address(addr)
 ' Set framebuffer address
     case addr
@@ -90,9 +90,7 @@ PUB Address(addr)
 PUB ClearAccel
 ' Clear the display immediately
     bytefill(_ptr_drawbuffer, $FF, _buff_sz)
-    Refresh
-'    Update
-'    repeat until not Busy
+    Update
 
 PUB DataEntryMode(mode)
 ' Define data entry sequence
@@ -127,11 +125,16 @@ PUB DisplayBounds(sx, sy, ex, ey) | x, y
     writeReg(core#RAM_Y_ST_END, 4, @y)
 
 PUB DisplayLines(lines) | tmp
-
+' Set total number of display lines
     tmp.byte[0] := lines.byte[LSB]
     tmp.byte[1] := lines.byte[MSB]
     tmp.byte[2] := %000             ' 1=Interlaced LSB=MirrorV
     writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
+
+PUB DisplayReady
+' Flag indicating display is ready to accept commands
+'   Returns: TRUE if display is ready, FALSE otherwise
+    return (io.Input(_BUSY) ^ 1) * TRUE
 
 PUB DummyLinePeriod(TGate) | tmp
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
@@ -190,28 +193,22 @@ PUB GateLowVoltage(mV) | tmp
     tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
     writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
 
-PUB PowerOn | tmp
-
-    tmp := $FF
-    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
-
-PUB Refresh | tmp, width, height
-
-    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
-    SetXY(0, 0)
-
-    repeat until not Busy
-
-    Update
-    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
-    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
-    writeReg(core#MASTER_ACT, 0, 0)
-    writeReg(core#NOOP, 0, 0)
-
-    repeat until not Busy
+PUB Powered(enabled) | tmp
+' Enable display power
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value is ignored
+    case ||enabled
+        0:
+            tmp := $00
+            writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+        1:
+            tmp := $FF
+            writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+        OTHER:
+            return
 
 PUB Reset | tmp
-
+' Reset the display controller
 '   2 HW Reset
     io.Low (_RESET)
     time.MSleep (200)
@@ -238,15 +235,15 @@ PUB Reset | tmp
 
     WriteLUT(@lut_update)
 
-    repeat until not Busy
+    repeat until DisplayReady
 
     DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
     SetXY(0, 0)
 
 PUB SetXY(x, y)
-
-    writeReg(core#RAM_X_ADDR_AC, 1, @y)
-    writeReg(core#RAM_Y_ADDR_AC, 2, @x)
+' Set x, y coordinate for subsequent drawing operations
+    writeReg(core#RAM_X_ADDR_AC, 1, @x)
+    writeReg(core#RAM_Y_ADDR_AC, 2, @y)
 
 PUB SourceVoltage(mV)
 ' Set source drive level, in millivolts
@@ -260,11 +257,21 @@ PUB SourceVoltage(mV)
 
     writeReg(core#SRCDRV_VOLT_CTRL, 1, @mV)
 
-PUB Update
+PUB Update | tmp
 ' Send the draw buffer to the display
-    writeReg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)
-'    Refresh
-'    repeat until not Busy
+    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
+    SetXY(0, 0)
+
+    repeat until DisplayReady
+
+    writeReg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)         ' Write the display buffer to the display
+
+    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
+    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+    writeReg(core#MASTER_ACT, 0, 0)
+    writeReg(core#NOOP, 0, 0)
+
+    repeat until DisplayReady
 
 PUB WriteLUT(ptr_lut)
 ' Write display-specific pixel waveform LookUp Table
