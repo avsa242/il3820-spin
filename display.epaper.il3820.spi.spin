@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2020
     Started Nov 30, 2019
-    Updated Jun 19, 2020
+    Updated Nov 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,12 +35,14 @@ OBJ
     time: "time"
     io  : "io"
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+' This is not a top-level object
 
 PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, dispbuffer_address): okay
 
-    if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
+    if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and {
+    }  lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and {
+    }  lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
         if okay := spi.start (core#CLK_DELAY, core#SCK_CPOL)
             _CS := CS_PIN
             _MOSI := DIN_PIN
@@ -49,14 +51,14 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, di
             _RESET := RST_PIN
             _BUSY := BUSY_PIN
 
-            io.Input (_BUSY)
-            io.Output (_CS)
-            io.Output (_DC)
-            io.Output (_RESET)
+            io.input(_BUSY)
+            io.output(_CS)
+            io.output(_DC)
+            io.output(_RESET)
 
-            io.High (_CS)
-            io.Low (_DC)
-            io.High (_RESET)
+            io.high(_CS)
+            io.low(_DC)
+            io.high(_RESET)
 
             _disp_width := WIDTH
             _disp_height := HEIGHT
@@ -64,33 +66,33 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, di
             _disp_ymax := _disp_height-1
             _buff_sz := _disp_width * ((_disp_height + 7) / 8)
             BYTESPERLN := _disp_width * BYTESPERPX
-            Address(dispbuffer_address)
-            Reset
-            ClearAccel
+            address(dispbuffer_address)
+            reset{}
+            clearaccel{}
             return okay
-    return FALSE                                                'If we got here, something went wrong
+    return FALSE                                ' something above failed
 
-PUB Stop
+PUB Stop{}
 
-    spi.stop
+    spi.stop{}
 
-PUB Defaults
+PUB Defaults{}
 ' Factory defaults
-    GateHighVoltage(22_000)
-    GateLowVoltage(-20_000)
+    gatehighvoltage(22_000)
+    gatelowvoltage(-20_000)
 
 PUB Address(addr)
 ' Set framebuffer address
     case addr
         $0004..$7FFF-_buff_sz:
             _ptr_drawbuffer := addr
-        OTHER:
+        other:
             return _ptr_drawbuffer
 
-PUB ClearAccel
+PUB ClearAccel{}
 ' Clear the display immediately
     bytefill(_ptr_drawbuffer, $FF, _buff_sz)
-    Update
+    update{}
 
 PUB DataEntryMode(mode)
 ' Define data entry sequence
@@ -107,9 +109,9 @@ PUB DataEntryMode(mode)
 '   Any other value is ignored
     case mode
         %0_00..%1_11:
-        OTHER:
-            return FALSE
-    writeReg(core#DATA_ENTRY_MODE, 1, @mode)
+        other:
+            return
+    writereg(core#DATA_ENTRY_MODE, 1, @mode)
 
 PUB DisplayBounds(sx, sy, ex, ey) | x, y
 ' Set drawable display region for subsequent drawing operations
@@ -121,48 +123,48 @@ PUB DisplayBounds(sx, sy, ex, ey) | x, y
     y.byte[1] := sy.byte[1]
     y.byte[0] := sy.byte[0]
 
-    writeReg(core#RAM_X_ST_END, 2, @x)
-    writeReg(core#RAM_Y_ST_END, 4, @y)
+    writereg(core#RAM_X_ST_END, 2, @x)
+    writereg(core#RAM_Y_ST_END, 4, @y)
 
 PUB DisplayLines(lines) | tmp
 ' Set total number of display lines
     tmp.byte[0] := lines.byte[LSB]
     tmp.byte[1] := lines.byte[MSB]
     tmp.byte[2] := %000             ' 1=Interlaced LSB=MirrorV
-    writeReg( core#DRIVER_OUT_CTRL, 3, @tmp)
+    writereg(core#DRIVER_OUT_CTRL, 3, @tmp)
 
-PUB DisplayReady
+PUB DisplayReady{}: flag
 ' Flag indicating display is ready to accept commands
-'   Returns: TRUE if display is ready, FALSE otherwise
-    return (io.Input(_BUSY) ^ 1) * TRUE
+'   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
+    return (io.input(_BUSY) ^ 1) * TRUE
 
-PUB DummyLinePeriod(TGate) | tmp
+PUB DummyLinePeriod(tgate): per
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
-    tmp := $00
-    readReg(core#DUMMY_LINE_PER, 1, @tmp)
+    per := $00
+    readreg(core#DUMMY_LINE_PER, 1, @per)
     case TGate
         0..127:
-        OTHER:
-            return tmp
+        other:
+            return per
 
-    writeReg(core#DUMMY_LINE_PER, 1, @tmp)
+    writereg(core#DUMMY_LINE_PER, 1, @per)
 
 PUB GateHighVoltage(mV) | tmp
 ' Set gate driving voltage (high level), in millivolts
 '   Valid values: 15_000..22_000 (default 22_000)
 '   Any other value returns the current setting
     tmp := $00
-    readReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    readreg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
     case mV
         15_000..22_000:
             mV := ((mV / 500) - 30) << core#FLD_VGH
-        OTHER:
+        other:
             tmp := (tmp >> core#FLD_VGH) & core#BITS_VGH
             return ((tmp + 30) * 500)
 
     mV &= core#MASK_VGH
     tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
-    writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
 
 PUB GateLineWidth(uS)
 ' Set gate line width, in microseconds (figure TGate)
@@ -171,27 +173,27 @@ PUB GateLineWidth(uS)
     case uS
         30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208:
             uS := lookdownz(uS: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208)
-        OTHER:
+        other:
             return
 
-    writeReg(core#GATE_LINE_WIDTH, 1, @uS)
+    writereg(core#GATE_LINE_WIDTH, 1, @uS)
 
 PUB GateLowVoltage(mV) | tmp
 ' Set gate driving voltage (low level), in millivolts
 '   Valid values: -20_000..-15_000 (default: -20_000)
 '   Any other value returns the current setting
     tmp := $00
-    readReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    readreg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
     case mV
         -20_000..-15_000:
             mV := (||mV / 500) - 30
-        OTHER:
+        other:
             tmp &= core#BITS_VGL
             return ((tmp + 30) * 500) * -1
 
     mV &= core#MASK_VGL
     tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
-    writeReg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
 
 PUB Powered(enabled) | tmp
 ' Enable display power
@@ -200,50 +202,50 @@ PUB Powered(enabled) | tmp
     case ||enabled
         0:
             tmp := $00
-            writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+            writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
         1:
             tmp := $FF
-            writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
-        OTHER:
+            writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+        other:
             return
 
-PUB Reset | tmp
+PUB Reset{} | tmp
 ' Reset the display controller
 '   2 HW Reset
-    io.Low (_RESET)
-    time.MSleep (200)
-    io.High (_RESET)
-    time.MSleep (200)
+    io.low(_RESET)
+    time.msleep (200)
+    io.high(_RESET)
+    time.msleep (200)
 
 '   3
-    DisplayLines(_disp_height)                                  ' MUX
-    GateHighVoltage(22_000)                                     ' VGH
-    GateLowVoltage(-20_000)                                     ' VGL
-    SourceVoltage(15_000)                                       ' VSH/VSL
-    DummyLinePeriod(26)
-    GateLineWidth(62)
+    displaylines(_disp_height)                                  ' MUX
+    gatehighvoltage(22_000)                                     ' VGH
+    gatelowvoltage(-20_000)                                     ' VGL
+    sourcevoltage(15_000)                                       ' VSH/VSL
+    dummylineperiod(26)
+    gatelinewidth(62)
 
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
     tmp.byte[2] := $9D
-    writeReg( core#BOOSTER_SOFTST_CTRL, 3, @tmp)
+    writereg(core#BOOSTER_SOFTST_CTRL, 3, @tmp)
 
     tmp := $A8
-    writeReg( core#WRITE_VCOM_REG, 1, @tmp)
+    writereg(core#WRITE_VCOM_REG, 1, @tmp)
 
-    DataEntryMode(%0_11)
+    dataentrymode(%0_11)
 
-    WriteLUT(@lut_update)
+    writelut(@lut_update)
 
-    repeat until DisplayReady
+    repeat until displayready{}
 
-    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
-    SetXY(0, 0)
+    displaybounds(0, 0, _disp_width-1, _disp_height-1)
+    setxy(0, 0)
 
 PUB SetXY(x, y)
 ' Set x, y coordinate for subsequent drawing operations
-    writeReg(core#RAM_X_ADDR_AC, 1, @x)
-    writeReg(core#RAM_Y_ADDR_AC, 2, @y)
+    writereg(core#RAM_X_ADDR_AC, 1, @x)
+    writereg(core#RAM_Y_ADDR_AC, 2, @y)
 
 PUB SourceVoltage(mV)
 ' Set source drive level, in millivolts
@@ -252,65 +254,66 @@ PUB SourceVoltage(mV)
     case mV
         10_000..17_000:
             mV := (mV / 500) - 20
-        OTHER:
+        other:
             return
 
-    writeReg(core#SRCDRV_VOLT_CTRL, 1, @mV)
+    writereg(core#SRCDRV_VOLT_CTRL, 1, @mV)
 
-PUB Update | tmp
+PUB Update{} | tmp
 ' Send the draw buffer to the display
-    DisplayBounds(0, 0, _disp_width-1, _disp_height-1)
-    SetXY(0, 0)
+    displaybounds(0, 0, _disp_width-1, _disp_height-1)
+    setxy(0, 0)
 
-    repeat until DisplayReady
+    repeat until displayready{}
 
-    writeReg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)         ' Write the display buffer to the display
+    writereg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)
 
     tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
-    writeReg(core#DISP_UPDATE_CTRL2, 1, @tmp)
-    writeReg(core#MASTER_ACT, 0, 0)
-    writeReg(core#NOOP, 0, 0)
+    writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+    writereg(core#MASTER_ACT, 0, 0)
+    writereg(core#NOOP, 0, 0)
 
-    repeat until DisplayReady
+    repeat until displayready{}
 
 PUB WriteLUT(ptr_lut)
 ' Write display-specific pixel waveform LookUp Table
-    writeReg( core#WRITE_LUT_REG, 30, ptr_lut)
+    writereg(core#WRITE_LUT_REG, 30, ptr_lut)
 
-PRI readReg(reg, nr_bytes, buff_addr) | tmp
-
-    case reg
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
+' Read nr_bytes from shadow register to ptr_buff
+    case reg_nr
         core#GATEDRV_VOLT_CTRL:
-            byte[buff_addr][0] := _shadow_regs[core#SH_GATEDRV_VOLT_CTRL]
+            byte[ptr_buff][0] := _shadow_reg_nrs[core#SH_GATEDRV_VOLT_CTRL]
         core#DUMMY_LINE_PER:
-            byte[buff_addr][0] := _shadow_regs[core#SH_DUMMY_LINE_PER]
+            byte[ptr_buff][0] := _shadow_reg_nrs[core#SH_DUMMY_LINE_PER]
         core#BOOSTER_SOFTST_CTRL:
             repeat tmp from 0 to nr_bytes-1
-                byte[buff_addr][tmp] := _shadow_regs[core#SH_BOOSTER_SOFTST_CTRL+tmp]
-        OTHER:
+                byte[ptr_buff][tmp] := _shadow_reg_nrs[core#SH_BOOSTER_SOFTST_CTRL+tmp]
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | i
-' Write nr_bytes of data from buff_addr to register 'reg'
-    case reg
-        $01, $0C, $10, $11, $1A, $20, $21, $22, $24, $2C, $32, $3A..$3C, $44, $45, $4E, $4F:    ' Commands w/data bytes
-            io.Low (_CS)
-            io.Low (_DC)                                                                        ' D/C mode: Command
-            spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | i
+' Write nr_bytes from ptr_buff to device
+    case reg_nr
+        $01, $0C, $10, $11, $1A, $20, $21, $22, $24, $2C, $32, $3A..$3C, $44,{
+        }$45, $4E, $4F:                         ' Commands w/data bytes
+            io.low(_CS)
+            io.low(_DC)                         ' D/C low = command
+            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
 
-            io.High (_DC)                                                                       ' D/C mode: Data
+            io.high(_DC)                        ' D/C high = data
             repeat i from 0 to nr_bytes-1
-                spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][i])
-            io.High (_CS)
+                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+            io.high(_CS)
 
-        core#SWRESET, core#MASTER_ACT, core#NOOP:                                               ' Simple commands; no accompanying data bytes
-            io.Low (_CS)
-            io.Low (_DC)                                                                        ' D/C mode: Command
-            spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
-            io.High (_CS)
+        core#SWRESET, core#MASTER_ACT, core#NOOP:' Simple commands
+            io.low(_CS)
+            io.low(_DC)
+            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+            io.high(_CS)
 
-        OTHER:
-            return FALSE
+        other:
+            return
 
 DAT
 
