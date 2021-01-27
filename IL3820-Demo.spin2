@@ -1,10 +1,11 @@
 {
     --------------------------------------------
-    Filename: IL3820-Demo.spin
+    Filename: IL3820-Demo.spin2
     Author: Jesse Burt
     Description: Demo of the IL3820 driver
+        (P2 version)
     Copyright (c) 2021
-    Started Nov 30, 2019
+    Started Jan 27, 2021
     Updated Jan 27, 2021
     See end of file for terms of use.
     --------------------------------------------
@@ -12,12 +13,12 @@
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkfreq    = cfg._clkfreq_def
+    _xtlfreq    = cfg._xtlfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
+    LED         = cfg.LED1
+    SER_BAUD    = 2_000_000
 
     DIN         = 0
     CLK         = 1
@@ -25,6 +26,7 @@ CON
     DC          = 3
     RST         = 4
     BUSY        = 5
+    CLK_FREQ    = 4_000_000                     ' max: 4_000_000
 
     WIDTH       = 128
     HEIGHT      = 296
@@ -36,7 +38,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "core.con.boardcfg.p2eval"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     epaper  : "display.epaper.il3820.spi"
@@ -46,16 +48,17 @@ VAR
 
     byte _framebuff[BUFF_SZ]
 
-PUB Main{} | i
+PUB Main() | i
 
-    setup{}
+    setup()
+
     ser.position(0, 3)
 
-    repeat until epaper.displayready{}          ' Wait for display to be ready
+    repeat until epaper.displayready()          ' Wait for display to be ready
 
-    epaper.bgcolor(epaper#WHITE)                ' set BG color for text, and
-    epaper.clear{}                              '   also Clear() color
-    epaper.fgcolor(epaper#BLACK)                ' set FG color for text
+    epaper.bgcolor(epaper.WHITE)                ' set BG color for text, and
+    epaper.clear()                              '   also Clear() color
+    epaper.fgcolor(epaper.BLACK)                ' set FG color for text
     epaper.box(0, 0, XMAX, YMAX, 0, FALSE)      ' draw box full-screen size
 
     epaper.position(5, 5)
@@ -71,49 +74,49 @@ PUB Main{} | i
 
     epaper.box(28, 100, 100, 200, 0, FALSE)     ' box around circles
 
-    hrule{}                                     ' draw rulers at screen edges
-    vrule{}
+    hrule()                                     ' draw rulers at screen edges
+    vrule()
 
-    epaper.update{}                             ' Update the display
+    epaper.update()                             ' Update the display
 
     repeat
 
-PUB HRule{} | x, grad_len
+PUB HRule() | x, grad_len
 ' Draw a simple rule along the x-axis
     grad_len := 5
 
     repeat x from 0 to WIDTH step 5
         if x // 10 == 0
-            epaper.line(x, 0, x, grad_len, epaper#INVERT)
+            epaper.line(x, 0, x, grad_len, epaper.INVERT)
         else
-            epaper.line(x, 0, x, grad_len*2, epaper#INVERT)
+            epaper.line(x, 0, x, grad_len*2, epaper.INVERT)
 
-PUB VRule{} | y, grad_len
+PUB VRule() | y, grad_len
 ' Draw a simple rule along the y-axis
     grad_len := 5
 
     repeat y from 0 to HEIGHT step 5
         if y // 10 == 0
-            epaper.line(0, y, grad_len, y, epaper#INVERT)
+            epaper.line(0, y, grad_len, y, epaper.INVERT)
         else
-            epaper.line(0, y, grad_len*2, y, epaper#INVERT)
+            epaper.line(0, y, grad_len*2, y, epaper.INVERT)
 
-PUB Setup{}
+PUB Setup()
 
     ser.start(SER_BAUD)
-    time.msleep(30)
-    ser.clear{}
+    waitms(30)
+    ser.clear()
     ser.strln(string("Serial terminal started"))
-    if epaper.startx(CS, CLK, DIN, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuff)
+    if epaper.startx(CS, CLK, DIN, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuff, CLK_FREQ)
         ser.strln(string("IL3820 driver started"))
         epaper.fontscale(1)
-        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontaddress(fnt.baseaddr())
         epaper.fontsize(6, 8)
     else
         ser.strln(string("IL3820 driver failed to start - halting"))
-        epaper.stop{}
-        time.msleep(500)
-        ser.stop{}
+        epaper.stop()
+        waitms(500)
+        repeat
 
 DAT
 {
