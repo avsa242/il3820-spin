@@ -14,6 +14,11 @@
 
 CON
 
+' Colors
+    BLACK       = 0
+    WHITE       = $FF
+    INVERT      = -1
+
     MAX_COLOR   = 1
     BYTESPERPX  = 1
 
@@ -137,7 +142,7 @@ PUB DisplayLines(lines) | tmp
 PUB DisplayReady{}: flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
-    return (io.input(_BUSY) ^ 1) == 1
+    return ((io.input(_BUSY) ^ 1) == 1)
 
 PUB DummyLinePeriod(period): curr_per
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
@@ -163,9 +168,8 @@ PUB GateHighVoltage(voltage): curr_vlt
             curr_vlt := (curr_vlt >> core#VGH) & core#VGH_BITS
             return ((curr_vlt + 30) * 500)
 
-    voltage &= core#VGH_MASK
-    curr_vlt := (curr_vlt | voltage) & core#GATEDRV_VOLT_CTRL_MASK
-    writereg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
+    voltage := ((curr_vlt & core#VGH_MASK) | voltage)
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @voltage)
 
 PUB GateLineWidth(usec)
 ' Set gate line width, in microseconds (figure TGate)
@@ -193,23 +197,22 @@ PUB GateLowVoltage(voltage) | curr_vlt
             curr_vlt &= core#VGL_BITS
             return ((curr_vlt + 30) * 500) * -1
 
-    voltage &= core#VGL_MASK
-    curr_vlt := (curr_vlt | voltage) & core#GATEDRV_VOLT_CTRL_MASK
-    writereg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
+    voltage := ((curr_vlt & core#VGL_MASK) | voltage)
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @voltage)
 
-PUB Powered(state) | tmp
+PUB Powered(state)
 ' Enable display power
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value is ignored
     case ||(state)
         0:
-            tmp := 0
-            writereg(core#DISP_UPDT_CTRL2, 1, @tmp)
+            state := 0
         1:
-            tmp := $FF
-            writereg(core#DISP_UPDT_CTRL2, 1, @tmp)
+            state := $FF
         other:
             return
+
+    writereg(core#DISP_UPDT_CTRL2, 1, @state)
 
 PUB Reset{} | tmp
 ' Reset the display controller
