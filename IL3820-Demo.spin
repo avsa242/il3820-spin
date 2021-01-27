@@ -3,9 +3,9 @@
     Filename: IL3820-Demo.spin
     Author: Jesse Burt
     Description: Demo of the IL3820 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 30, 2019
-    Updated Nov 21, 2020
+    Updated Jan 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     epaper  : "display.epaper.il3820.spi"
@@ -53,22 +53,25 @@ PUB Main{} | i
 
     repeat until epaper.displayready{}          ' Wait for display to be ready
 
-    epaper.bgcolor($FF)
-    epaper.clear{}
-    epaper.fgcolor(0)
-    epaper.box(0, 0, XMAX, YMAX, 0, FALSE)
+    epaper.bgcolor(epaper#WHITE)                ' set BG color for text, and
+    epaper.clear{}                              '   also Clear() color
+    epaper.fgcolor(epaper#BLACK)                ' set FG color for text
+    epaper.box(0, 0, XMAX, YMAX, 0, FALSE)      ' draw box full-screen size
+
     epaper.position(5, 5)
     epaper.str(string("HELLO WORLD"))
 
     epaper.line(0, 0, 100, 100, 0)              ' Draw diagonal line
-    repeat i from 0 to 64 step 10
-        epaper.circle(64, 148, i, 0)
 
     repeat i from 0 to 100                      ' Same, mirrored, using Plot()
         epaper.plot(127-i, i, 0)
-    epaper.box(28, 100, 100, 200, 0, FALSE)
 
-    hrule{}
+    repeat i from 0 to 64 step 10               ' concentric circles
+        epaper.circle(64, 148, i, 0)
+
+    epaper.box(28, 100, 100, 200, 0, FALSE)     ' box around circles
+
+    hrule{}                                     ' draw rulers at screen edges
     vrule{}
 
     epaper.update{}                             ' Update the display
@@ -81,9 +84,9 @@ PUB HRule{} | x, grad_len
 
     repeat x from 0 to WIDTH step 5
         if x // 10 == 0
-            epaper.line(x, 0, x, grad_len, -1)
+            epaper.line(x, 0, x, grad_len, epaper#INVERT)
         else
-            epaper.line(x, 0, x, grad_len*2, -1)
+            epaper.line(x, 0, x, grad_len*2, epaper#INVERT)
 
 PUB VRule{} | y, grad_len
 ' Draw a simple rule along the y-axis
@@ -91,18 +94,19 @@ PUB VRule{} | y, grad_len
 
     repeat y from 0 to HEIGHT step 5
         if y // 10 == 0
-            epaper.line(0, y, grad_len, y, -1)
+            epaper.line(0, y, grad_len, y, epaper#INVERT)
         else
-            epaper.line(0, y, grad_len*2, y, -1)
+            epaper.line(0, y, grad_len*2, y, epaper#INVERT)
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(100)
+    time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
     if epaper.start(CS, CLK, DIN, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("IL3820 driver started"))
+        epaper.fontscale(1)
         epaper.fontaddress(fnt.baseaddr{})
         epaper.fontsize(6, 8)
     else
@@ -110,73 +114,6 @@ PUB Setup{}
         epaper.stop{}
         time.msleep(500)
         ser.stop{}
-
-DAT
-'1024 bytes
-    Beanie      byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $C0, $80, $80, $80, $80, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80
-                byte    $80, $00, $00, $00, $80, $80, $80, $80, $C0, $C0, $C0, $C0, $C0, $E0, $E0, $E0
-                byte    $E0, $E0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
-                byte    $E0, $E0, $80, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0F, $1F, $3F
-                byte    $3F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $3F, $3F, $3F, $3F
-                byte    $3F, $3F, $1F, $1F, $1E, $1E, $1E, $0E, $0E, $0E, $0E, $06, $06, $06, $F7, $FF
-                byte    $FF, $F7, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $07
-                byte    $07, $07, $07, $07, $07, $0F, $0F, $0F, $0F, $0F, $1F, $1F, $1F, $1F, $1F, $1F
-                byte    $0F, $0F, $07, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $80, $C0, $C0, $E0, $E0, $60, $70, $30, $30, $18, $18, $C8, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $C8, $18, $18, $30, $30, $70, $60, $E0, $E0, $C0, $C0, $80, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0, $E0, $F0, $F8, $FC, $FE, $7F
-                byte    $3F, $0F, $07, $03, $01, $00, $00, $00, $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00, $00, $00, $00, $01, $03, $07, $0F, $3F
-                byte    $7F, $FE, $FC, $F8, $F0, $E0, $C0, $80, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $80, $E0, $F8, $FC, $FF, $FF, $FF, $FF, $FF, $3F, $07, $01, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $F8, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F8, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $01, $07, $3F, $FF, $FF, $FF, $FF, $FF, $FC, $F8, $E0, $80, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $BF, $81, $80, $80, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $F0, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F0, $C0, $C0, $C0, $C0, $C0, $C0, $C0
-                byte    $C0, $80, $80, $80, $81, $BF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $78, $FF, $FF, $FF, $FF, $FF, $FF, $CF, $CF, $CF, $CF, $CF, $C7, $87, $87, $87
-                byte    $87, $87, $87, $87, $87, $87, $87, $07, $03, $03, $03, $03, $03, $03, $03, $03
-                byte    $03, $03, $03, $03, $03, $03, $03, $03, $07, $87, $87, $87, $87, $87, $87, $87
-                byte    $87, $87, $87, $C7, $CF, $CF, $CF, $CF, $CF, $FF, $FF, $FF, $FF, $FF, $FF, $78
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $01, $01, $03, $03, $03, $03, $03, $07, $07, $07, $07, $07, $07, $07
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $07, $07, $07, $07, $07, $07, $07, $03, $03, $03, $03, $03, $01, $01, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 DAT
 {
