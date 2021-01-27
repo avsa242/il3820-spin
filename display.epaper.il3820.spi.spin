@@ -3,9 +3,9 @@
     Filename: display.electrophoretic.il3820.spi.spin
     Author: Jesse Burt
     Description: Driver for the IL3820 electrophoretic display controller
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 30, 2019
-    Updated Nov 21, 2020
+    Updated Jan 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,7 +24,7 @@ VAR
 
     long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    word BYTESPERLN
+    word bytesperln
     byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
     byte _shadow_regs[40]
 
@@ -38,12 +38,12 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, dispbuffer_address): okay
-
+PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, ptr_dispbuff): okay
+' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and {
     }  lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and {
     }  lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
-        if okay := spi.start (core#CLK_DELAY, core#SCK_CPOL)
+        if okay := spi.start(core#CLK_DELAY, core#SCK_CPOL)
             _CS := CS_PIN
             _MOSI := DIN_PIN
             _DC := DC_PIN
@@ -65,11 +65,14 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, di
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
             _buff_sz := _disp_width * ((_disp_height + 7) / 8)
-            BYTESPERLN := _disp_width * BYTESPERPX
-            address(dispbuffer_address)
+            bytesperln := _disp_width * BYTESPERPX
+            address(ptr_dispbuff)
             reset{}
             clearaccel{}
             return okay
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
     return FALSE                                ' something above failed
 
 PUB Stop{}
@@ -111,7 +114,7 @@ PUB DataEntryMode(mode)
         %0_00..%1_11:
         other:
             return
-    writereg(core#DATA_ENTRY_MODE, 1, @mode)
+    writereg(core#DATA_ENT_MD, 1, @mode)
 
 PUB DisplayBounds(sx, sy, ex, ey) | x, y
 ' Set drawable display region for subsequent drawing operations
@@ -136,76 +139,77 @@ PUB DisplayLines(lines) | tmp
 PUB DisplayReady{}: flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
-    return (io.input(_BUSY) ^ 1) * TRUE
+    return (io.input(_BUSY) ^ 1) == 1
 
-PUB DummyLinePeriod(tgate): per
+PUB DummyLinePeriod(period): curr_per
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
-    per := $00
-    readreg(core#DUMMY_LINE_PER, 1, @per)
-    case TGate
+    curr_per := 0
+    readreg(core#DUMMY_LINE_PER, 1, @curr_per)
+    case period
         0..127:
         other:
-            return per
+            return curr_per
 
-    writereg(core#DUMMY_LINE_PER, 1, @per)
+    writereg(core#DUMMY_LINE_PER, 1, @period)
 
-PUB GateHighVoltage(mV) | tmp
+PUB GateHighVoltage(voltage): curr_vlt
 ' Set gate driving voltage (high level), in millivolts
 '   Valid values: 15_000..22_000 (default 22_000)
 '   Any other value returns the current setting
-    tmp := $00
-    readreg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
-    case mV
+    curr_vlt := 0
+    readreg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
+    case voltage
         15_000..22_000:
-            mV := ((mV / 500) - 30) << core#FLD_VGH
+            voltage := ((voltage / 500) - 30) << core#VGH
         other:
-            tmp := (tmp >> core#FLD_VGH) & core#BITS_VGH
-            return ((tmp + 30) * 500)
+            curr_vlt := (curr_vlt >> core#VGH) & core#VGH_BITS
+            return ((curr_vlt + 30) * 500)
 
-    mV &= core#MASK_VGH
-    tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
-    writereg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    voltage &= core#VGH_MASK
+    curr_vlt := (curr_vlt | voltage) & core#GATEDRV_VOLT_CTRL_MASK
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
 
-PUB GateLineWidth(uS)
+PUB GateLineWidth(usec)
 ' Set gate line width, in microseconds (figure TGate)
 '   Valid values: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
 '   Any other value is ignored
-    case uS
+    case usec
         30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208:
-            uS := lookdownz(uS: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208)
+            usec := lookdownz(usec: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, {
+}           78, 88, 104, 125, 156, 208)
         other:
             return
 
-    writereg(core#GATE_LINE_WIDTH, 1, @uS)
+    writereg(core#GATE_LINE_WIDTH, 1, @usec)
 
-PUB GateLowVoltage(mV) | tmp
+PUB GateLowVoltage(voltage) | curr_vlt
 ' Set gate driving voltage (low level), in millivolts
 '   Valid values: -20_000..-15_000 (default: -20_000)
 '   Any other value returns the current setting
-    tmp := $00
-    readreg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
-    case mV
+    curr_vlt := 0
+    readreg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
+    case voltage
         -20_000..-15_000:
-            mV := (||mV / 500) - 30
+            voltage := (||(voltage) / 500) - 30
         other:
-            tmp &= core#BITS_VGL
-            return ((tmp + 30) * 500) * -1
+            curr_vlt &= core#VGL_BITS
+            return ((curr_vlt + 30) * 500) * -1
 
-    mV &= core#MASK_VGL
-    tmp := (tmp | mV) & core#GATEDRV_VOLT_CTRL_MASK
-    writereg(core#GATEDRV_VOLT_CTRL, 1, @tmp)
+    voltage &= core#VGL_MASK
+    curr_vlt := (curr_vlt | voltage) & core#GATEDRV_VOLT_CTRL_MASK
+    writereg(core#GATEDRV_VOLT_CTRL, 1, @curr_vlt)
 
-PUB Powered(enabled) | tmp
+PUB Powered(state) | tmp
 ' Enable display power
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value is ignored
-    case ||enabled
+    case ||(state)
         0:
-            tmp := $00
-            writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+            tmp := 0
+            writereg(core#DISP_UPDT_CTRL2, 1, @tmp)
         1:
             tmp := $FF
-            writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+            writereg(core#DISP_UPDT_CTRL2, 1, @tmp)
         other:
             return
 
@@ -213,9 +217,9 @@ PUB Reset{} | tmp
 ' Reset the display controller
 '   2 HW Reset
     io.low(_RESET)
-    time.msleep (200)
+    time.msleep(200)
     io.high(_RESET)
-    time.msleep (200)
+    time.msleep(200)
 
 '   3
     displaylines(_disp_height)                                  ' MUX
@@ -228,7 +232,7 @@ PUB Reset{} | tmp
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
     tmp.byte[2] := $9D
-    writereg(core#BOOSTER_SOFTST_CTRL, 3, @tmp)
+    writereg(core#BOOST_SOFTST_CTRL, 3, @tmp)
 
     tmp := $A8
     writereg(core#WRITE_VCOM_REG, 1, @tmp)
@@ -247,17 +251,17 @@ PUB SetXY(x, y)
     writereg(core#RAM_X_ADDR_AC, 1, @x)
     writereg(core#RAM_Y_ADDR_AC, 2, @y)
 
-PUB SourceVoltage(mV)
+PUB SourceVoltage(voltage)
 ' Set source drive level, in millivolts
 '   Valid values: 10_000..17_000
 '   Any other value is ignored
-    case mV
+    case voltage
         10_000..17_000:
-            mV := (mV / 500) - 20
+            voltage := (voltage / 500) - 20
         other:
             return
 
-    writereg(core#SRCDRV_VOLT_CTRL, 1, @mV)
+    writereg(core#SRCDRV_VOLT_CTRL, 1, @voltage)
 
 PUB Update{} | tmp
 ' Send the draw buffer to the display
@@ -268,8 +272,8 @@ PUB Update{} | tmp
 
     writereg(core#WRITE_RAM, _buff_sz, _ptr_drawbuffer)
 
-    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATTERN_DISP
-    writereg(core#DISP_UPDATE_CTRL2, 1, @tmp)
+    tmp := core#SEQ_CLK_CP_EN | core#SEQ_PATT_DISP
+    writereg(core#DISP_UPDT_CTRL2, 1, @tmp)
     writereg(core#MASTER_ACT, 0, 0)
     writereg(core#NOOP, 0, 0)
 
@@ -283,12 +287,12 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Read nr_bytes from shadow register to ptr_buff
     case reg_nr
         core#GATEDRV_VOLT_CTRL:
-            byte[ptr_buff][0] := _shadow_reg_nrs[core#SH_GATEDRV_VOLT_CTRL]
+            byte[ptr_buff][0] := _shadow_regs[core#SH_GATEDRV_VOLT_CTRL]
         core#DUMMY_LINE_PER:
-            byte[ptr_buff][0] := _shadow_reg_nrs[core#SH_DUMMY_LINE_PER]
-        core#BOOSTER_SOFTST_CTRL:
+            byte[ptr_buff][0] := _shadow_regs[core#SH_DUMMY_LINE_PER]
+        core#BOOST_SOFTST_CTRL:
             repeat tmp from 0 to nr_bytes-1
-                byte[ptr_buff][tmp] := _shadow_reg_nrs[core#SH_BOOSTER_SOFTST_CTRL+tmp]
+                byte[ptr_buff][tmp] := _shadow_regs[core#SH_BOOST_SOFTST_CTRL+tmp]
         other:
             return
 
