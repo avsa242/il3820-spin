@@ -25,7 +25,7 @@ VAR
     long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
     word bytesperln
-    byte _CS, _MOSI, _DC, _SCK, _RESET, _BUSY
+    byte _CS, _DC, _RESET, _BUSY
     byte _shadow_regs[40]
 
 OBJ
@@ -38,16 +38,14 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, ptr_dispbuff): okay
+PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and {
     }  lookdown(DIN_PIN: 0..31) and lookdown(DC_PIN: 0..31) and {
     }  lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
-        if okay := spi.start(core#CLK_DELAY, core#SCK_CPOL)
+        if (status := spi.init(CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
             _CS := CS_PIN
-            _MOSI := DIN_PIN
             _DC := DC_PIN
-            _SCK := CLK_PIN
             _RESET := RST_PIN
             _BUSY := BUSY_PIN
 
@@ -69,7 +67,7 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, pt
             address(ptr_dispbuff)
             reset{}
             clearaccel{}
-            return okay
+            return status
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -296,26 +294,22 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | i
+PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         $01, $0C, $10, $11, $1A, $20, $21, $22, $24, $2C, $32, $3A..$3C, $44,{
         }$45, $4E, $4F:                         ' Commands w/data bytes
             io.low(_CS)
             io.low(_DC)                         ' D/C low = command
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-
+            spi.wr_byte(reg_nr)
             io.high(_DC)                        ' D/C high = data
-            repeat i from 0 to nr_bytes-1
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][i])
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
             io.high(_CS)
-
         core#SWRESET, core#MASTER_ACT, core#NOOP:' Simple commands
             io.low(_CS)
             io.low(_DC)
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+            spi.wr_byte(reg_nr)
             io.high(_CS)
-
         other:
             return
 
