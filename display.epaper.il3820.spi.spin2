@@ -30,7 +30,7 @@ VAR
 
     long _ptr_drawbuffer, _buff_sz
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    word bytesperln
+    word _bytesperln
     byte _CS, _DC, _RESET, _BUSY
     byte _shadow_regs[40]
 
@@ -65,7 +65,7 @@ PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT,{
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
             _buff_sz := _disp_width * ((_disp_height + 7) / 8)
-            bytesperln := _disp_width * BYTESPERPX
+            _bytesperln := _disp_width * BYTESPERPX
             address(ptr_dispbuff)
             reset()
             clearaccel()
