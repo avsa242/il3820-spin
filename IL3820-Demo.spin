@@ -5,7 +5,7 @@
     Description: Demo of the IL3820 driver
     Copyright (c) 2021
     Started Nov 30, 2019
-    Updated Jan 27, 2021
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -67,7 +67,7 @@ PUB Main{} | i
         epaper.plot(127-i, i, 0)
 
     repeat i from 0 to 64 step 10               ' concentric circles
-        epaper.circle(64, 148, i, 0)
+        epaper.circle(64, 148, i, 0, false)
 
     epaper.box(28, 100, 100, 200, 0, FALSE)     ' box around circles
 
