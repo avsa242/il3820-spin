@@ -14,15 +14,18 @@ This is a P8X32A/Propeller driver object for the IL3820 electrophoretic (E-Ink, 
 
 P1/SPIN1:
 * spin-standard-library
-* P1/SPIN1: 1 extra core/cog for the PASM I2C driver
+* P1/SPIN1: 1 extra core/cog for the PASM I2C engine
 
 P2/SPIN2:
 * p2-spin-standard-library
 
 ## Compiler Compatibility
 
-* P1/SPIN1: OpenSpin (tested with 1.00.81)
-* P2/SPIN2: FastSpin (tested with 5.0.6-beta)
+* P1/SPIN1 OpenSpin (bytecode): Untested (deprecated)
+* P1/SPIN1 FlexSpin (bytecode): OK, tested with 5.9.7-beta
+* P1/SPIN1 FlexSpin (native): OK, tested with 5.9.7-beta
+* ~~P2/SPIN2 FlexSpin (nu-code): FTBFS, tested with 5.9.7-beta~~
+* P2/SPIN2 FlexSpin (native): OK, tested with 5.9.7-beta
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
@@ -32,7 +35,3 @@ P2/SPIN2:
 * Very early in development - may malfunction, or outright fail to build
 * Most initialization and setup code for the display is currently hardcoded
 
-## TODO
-- [ ] Clean up driver - rewrite some currently low-level 'magic' looking code to HLL-equivalents
-- [x] Port to P2/SPIN2
-- [ ] Test with other display sizes
