@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Jan 30, 2022
+    Updated Feb 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -198,13 +198,15 @@ PUB GateLowVoltage(voltage) | curr_vlt
     voltage := ((curr_vlt & core#VGL_MASK) | voltage)
     writereg(core#GATEDRV_VOLT_CTRL, 1, @voltage)
 
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
 #ifdef GFX_DIRECT
-PUB Plot(x, y, color)
-' Plot pixel at (x, y) in color (direct to display)
-
+' direct to display
+'   (not implemented)
 #else
-PUB Plot(x, y, color)
-' Plot pixel at (x, y) in color (buffered)
+' buffered display
     case color
         1:
             byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
