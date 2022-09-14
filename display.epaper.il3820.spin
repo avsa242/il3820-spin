@@ -16,15 +16,15 @@
 CON
 
 ' Colors
-    BLACK       = 0
-    WHITE       = $FF
-    INVERT      = -1
+    BLACK           = 0
+    WHITE           = $FF
+    INVERT          = -1
 
-    MAX_COLOR   = 1
-    BYTESPERPX  = 1
+    MAX_COLOR       = 1
+    BYTESPERPX      = 1
 
-    MSB         = 1
-    LSB         = 0
+    MSB             = 1
+    LSB             = 0
 
 ' Border waveform control
     GS_TRANS        = %00
