@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Feb 5, 2022
+    Updated Sep 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -513,6 +513,20 @@ PUB writelut(ptr_lut)
 ' Write display-specific pixel waveform LookUp Table
     writereg(core#WR_LUT, 30, ptr_lut)
 
+CON
+
+    CMD     = 0
+    DATA    = 1
+
+PRI command(c)
+' Issue command without parameters to display
+    case c
+        core#SWRESET, core#MASTER_ACT, core#NOOP:
+            outa[_DC] := CMD
+            outa[_CS] := 0
+            spi.wr_byte(c)
+            outa[_CS] := 1
+
 #ifndef GFX_DIRECT
 PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
@@ -528,14 +542,14 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff)
         $01, $03, $04, $0C, $10, $11, $1A, $21, $22, $24, $2C, $32, $3A..$3C, {
 }       $44, $45, $4E, $4F:                     ' Commands w/data bytes
             outa[_CS] := 0
-            outa[_DC] := 0                      ' D/C low = command
+            outa[_DC] := CMD                    ' D/C low = command
             spi.wr_byte(reg_nr)
-            outa[_DC] := 1                      ' D/C high = data
+            outa[_DC] := DATA                   ' D/C high = data
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
         core#SWRESET, core#MASTER_ACT, core#NOOP:' Simple commands
             outa[_CS] := 0
-            outa[_DC] := 0
+            outa[_DC] := CMD
             spi.wr_byte(reg_nr)
             outa[_CS] := 1
         other:
