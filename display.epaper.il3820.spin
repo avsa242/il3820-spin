@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Sep 14, 2022
+    Updated Oct 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -146,19 +146,19 @@ PUB defaults{}
 PUB preset_2p9_bw{}
 ' Presets for 2.9" BW E-ink panel, 128x296
     reset{}
-    repeat until displayready{}
+    repeat until disp_rdy{}
 
-    analogblkctrl{}
-    digblkctrl{}
+    analog_blk_ctrl{}
+    dig_blk_ctrl{}
 '    gatestartpos(0)
-    displaylines(296)
+    disp_lines(296)
 '    gatefirstchan(0)
 '    interlaced(false)
 '    mirrorv(false)
-    addrmode(HORIZ)
-    addrctrmode(YI_XI)
+    addr_mode(HORIZ)
+    addr_ctr_mode(YI_XI)
 
-    displaybounds(0, 0, 127, 295)
+    disp_area(0, 0, 127, 295)
 
 '    bordermode(HIZ)
 '    bordervbdlev(BRD_VSS)
@@ -173,9 +173,9 @@ PUB preset_2p9_bw{}
 
 '    dummylineper(_lut_2p13_bw_full[74])
 '    gatelinewidth(_lut_2p13_bw_full[75])
-    writelut(@_lut_2p9_bw_full)
-'    displaypos(0, 0)
-    repeat until displayready{}
+    wr_lut(@_lut_2p9_bw_full)
+'    disp_pos(0, 0)
+    repeat until disp_rdy{}
 
 PUB address(addr)
 ' Set framebuffer address
@@ -185,7 +185,7 @@ PUB address(addr)
         other:
             return _ptr_drawbuffer
 
-PUB addrctrmode(mode): curr_mode
+PUB addr_ctr_mode(mode): curr_mode
 ' Set address increment/decrement mode
 '   Valid values:
 '       YD_XD (%00): Y-decrement, X-decrement
@@ -206,7 +206,7 @@ PUB addrctrmode(mode): curr_mode
         _data_entr_mode := mode
         writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
-PUB addrmode(mode): curr_mode
+PUB addr_mode(mode): curr_mode
 ' Set display addressing mode
 '   Valid values:
 '      *HORIZ (0)
@@ -226,7 +226,7 @@ PUB addrmode(mode): curr_mode
         _data_entr_mode := mode
         writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
-PUB analogblkctrl{} | tmp
+PUB analog_blk_ctrl{} | tmp
 ' Analog Block control
     tmp := $54
     writereg(core#ANLG_BLK_CTRL, 1, @tmp)
@@ -237,12 +237,12 @@ PUB clear{}
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
-PUB digblkctrl{} | tmp
+PUB dig_blk_ctrl{} | tmp
 ' Digital Block control
     tmp := $3b
     writereg(core#DIGI_BLK_CTRL, 1, @tmp)
 
-PUB displaybounds(sx, sy, ex, ey) | tmpx, tmpy
+PUB disp_area(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..127
@@ -258,7 +258,7 @@ PUB displaybounds(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core#RAM_X_WIND, 2, @tmpx)
     writereg(core#RAM_Y_WIND, 4, @tmpy)
 
-PUB displaylines(lines): curr_lines
+PUB disp_lines(lines): curr_lines
 ' Set display visible lines
 '   Valid values: 1..296
 '   Any other value returns the current (cached) setting
@@ -277,7 +277,7 @@ PUB displaylines(lines): curr_lines
         _drv_out_ctrl[1] := lines.byte[1]
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB displaypos(x, y) | tmp
+PUB disp_pos(x, y) | tmp
 ' Set position for subsequent drawing operations
 '   Valid values:
 '       x: 0..127
@@ -285,17 +285,17 @@ PUB displaypos(x, y) | tmp
     writereg(core#RAM_X, 1, @x)
     writereg(core#RAM_Y, 2, @y)
 
-PUB displayready{}: flag
+PUB disp_rdy{}: flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
     return (ina[_BUSY] == 1)
 
-PUB dispupdatectrl2{} | tmp
+PUB disp_upd_ctrl2{} | tmp
 
     tmp := $c7
     writereg(core#DISP_UP_CTRL2, 1, @tmp)
 
-PUB dummylineper(period)
+PUB dummy_line_per(period)
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
 '   Valid values: 0..127
 '   Any other value is ignored
@@ -306,7 +306,7 @@ PUB dummylineper(period)
 
     writereg(core#DUMMY_LN_PER, 1, @period)
 
-PUB gatefirstchan(ch): curr_ch
+PUB gate_first_chan(ch): curr_ch
 ' Set first output gate
 '   Valid values:
 '       0: G0 first channel; output sequence is G0, G1, G2, G3...
@@ -326,7 +326,7 @@ PUB gatefirstchan(ch): curr_ch
         _drv_out_ctrl[2] := ch
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB gatehighvoltage(lvl): curr_lvl
+PUB gate_high_voltage(lvl): curr_lvl
 ' Set gate driving voltage (high level, VGH), in millivolts
 '   Valid values: 15_000..22_000 (default 22_000)
 '   Any other value returns the current setting
@@ -342,7 +342,7 @@ PUB gatehighvoltage(lvl): curr_lvl
     _gate_drv_volt  := lvl
     writereg(core#GATE_DRV_CTRL, 1, @_gate_drv_volt)
 
-PUB gatelinewidth(usec)
+PUB gate_line_width(usec)
 ' Set gate line width, in microseconds (figure TGate)
 '   Valid values: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
 '   Any other value is ignored
@@ -355,7 +355,7 @@ PUB gatelinewidth(usec)
 
     writereg(core#GATE_LN_WD, 1, @usec)
 
-PUB gatelowvoltage(voltage): curr_vlt
+PUB gate_low_voltage(voltage): curr_vlt
 ' Set gate driving voltage (low level, VGL), in millivolts
 '   Valid values: -20_000..-15_000 (default: -20_000)
 '   Any other value returns the current setting
@@ -371,11 +371,11 @@ PUB gatelowvoltage(voltage): curr_vlt
     _gate_drv_volt := voltage
     writereg(core#GATE_DRV_CTRL, 1, @_gate_drv_volt)
 
-PUB gatestartpos(row)
+PUB gate_start_pos(row)
 
     writereg(core#GATE_ST_POS, 2, @row)
 
-PUB interlaced(state): curr_state
+PUB interlace_ena(state): curr_state
 ' Alternate direction of every other display line
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
@@ -393,11 +393,11 @@ PUB interlaced(state): curr_state
         _drv_out_ctrl[2] := state
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB masteract{}
+PUB master_act{}
 
     writereg(core#MASTER_ACT, 0, 0)
 
-PUB mirrorv(state): curr_state  'XXX not functional yet
+PUB mirror_v(state): curr_state  'XXX not functional yet
 ' Mirror display, vertically
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
@@ -455,14 +455,14 @@ PUB reset{} | tmp
     else                                        ' otherwise, just perform
         writereg(core#SWRESET, 0, 0)            '   soft-reset
         time.usleep(core#T_POR)
-    repeat until displayready{}
+    repeat until disp_rdy{}
 
-    displaylines(_disp_height)                  ' MUX
-    gatehighvoltage(22_000)                     ' VGH
-    gatelowvoltage(-20_000)                     ' VGL
-    vsh1voltage(15_000)                       ' VSH/VSL
-    dummylineper(26)
-    gatelinewidth(62)
+    disp_lines(_disp_height)                    ' MUX
+    gate_high_voltage(22_000)                   ' VGH
+    gate_low_voltage(-20_000)                   ' VGL
+    vsh1_voltage(15_000)                        ' VSH/VSL
+    dummy_line_per(26)
+    gate_line_width(62)
 
     tmp.byte[0] := $D7
     tmp.byte[1] := $D6
@@ -474,19 +474,19 @@ PUB reset{} | tmp
 
     'dataentrymode(%0_11)
 
-    writelut(@_lut_2p9_bw_full)
+    wr_lut(@_lut_2p9_bw_full)
 
-    repeat until displayready{}
+    repeat until disp_rdy{}
 
-    displaybounds(0, 0, _disp_width-1, _disp_height-1)
-    displaypos(0, 0)
+    disp_area(0, 0, _disp_width-1, _disp_height-1)
+    disp_pos(0, 0)
 
-PUB update{} | tmp
+PUB show{} | tmp
 ' Send the draw buffer to the display
-    displaybounds(0, 0, _disp_width-1, _disp_height-1)
-    displaypos(0, 0)
+    disp_area(0, 0, _disp_width-1, _disp_height-1)
+    disp_pos(0, 0)
 
-    repeat until displayready{}
+    repeat until disp_rdy{}
 
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
 
@@ -495,9 +495,9 @@ PUB update{} | tmp
     writereg(core#MASTER_ACT, 0, 0)
     writereg(core#NOOP, 0, 0)
 
-    repeat until displayready{}
+    repeat until disp_rdy{}
 
-PUB vsh1voltage(voltage)
+PUB vsh1_voltage(voltage)
 ' Set source drive (VSH/VSL) level, in millivolts
 '   Valid values: 10_000..17_000
 '   Any other value is ignored
@@ -509,7 +509,7 @@ PUB vsh1voltage(voltage)
 
     writereg(core#SRC_DRV_CTRL, 1, @voltage)
 
-PUB writelut(ptr_lut)
+PUB wr_lut(ptr_lut)
 ' Write display-specific pixel waveform LookUp Table
     writereg(core#WR_LUT, 30, ptr_lut)
 

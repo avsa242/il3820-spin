@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Jul 4, 2022
-    Updated: Jul 4, 2022
+    Updated: Oct 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,7 +40,7 @@ OBJ
     cfg     : "core.con.boardcfg.p2eval"
     epaper  : "display.epaper.il3820"
 
-PUB Main()
+PUB main()
 
     ser.start(SER_BAUD)
     waitms(30)

@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Jul 2, 2022
-    Updated: Jul 2, 2022
+    Updated: Oct 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -32,16 +32,12 @@ CON
 
     BPP         = epaper#BYTESPERPX
     BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = ((WIDTH * HEIGHT) * BPP) / 8
+    BUFF_SZ     = ((WIDTH * HEIGHT) * BPP) / 8
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     epaper  : "display.epaper.il3820"
-
-VAR
-
-    byte _disp_buff[BUFFSZ]                            ' display buffer
 
 PUB main{}
 
