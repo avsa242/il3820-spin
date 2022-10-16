@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Jul 2, 2022
-    Updated: Oct 5, 2022
+    Updated: Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     epaper  : "display.epaper.il3820"
 
 PUB main{}
@@ -52,7 +52,7 @@ PUB main{}
         epaper.fontspacing(1, 0)
         epaper.fontsize(fnt#WIDTH, fnt#HEIGHT)
         epaper.fontscale(1)
-        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontaddress(fnt.ptr{})
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
