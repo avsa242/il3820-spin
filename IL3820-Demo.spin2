@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Jul 4, 2022
-    Updated: Oct 16, 2022
+    Updated: Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -50,10 +50,10 @@ PUB main()
     if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, BUSY_PIN, {
 }   SCK_HZ, WIDTH, HEIGHT, @_disp_buff)
         ser.printf(@"%s driver started", @_drv_name)
-        epaper.fontspacing(1, 0)
-        epaper.fontsize(fnt.WIDTH, fnt.HEIGHT)
-        epaper.fontscale(1)
-        epaper.fontaddress(fnt.ptr())
+        epaper.font_spacing(1, 0)
+        epaper.font_sz(fnt.WIDTH, fnt.HEIGHT)
+        epaper.font_scl(1)
+        epaper.font_addr(fnt.ptr())
     else
         ser.printf(@"%s driver failed to start - halting", @_drv_name)
         repeat
