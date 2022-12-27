@@ -134,9 +134,34 @@ PUB stop()
 PUB defaults()
 ' Factory defaults
     reset()
+    disp_lines(_disp_height)                    ' MUX
+    gate_high_voltage(22_000)                   ' VGH
+    gate_low_voltage(-20_000)                   ' VGL
+    vsh1_voltage(15_000)                        ' VSH/VSL
+    dummy_line_per(26)
+    gate_line_width(62)
 
-PUB preset_2p9_bw()
+    tmp.byte[0] := $D7
+    tmp.byte[1] := $D6
+    tmp.byte[2] := $9D
+    writereg(core.BOOST_CTRL, 3, @tmp)
+
+    tmp := $A8
+    writereg(core.WR_VCOM, 1, @tmp)
+
+    'dataentrymode(%0_11)
+
+    wr_lut(@_lut_2p9_bw_full)
+
+    repeat until disp_rdy()
+
+    draw_area(0, 0, _disp_width-1, _disp_height-1)
+    disp_pos(0, 0)
+
+PUB preset_2p9_bw = preset_e029a01_bw
+PUB preset_e029a01_bw()
 ' Presets for 2.9" BW E-ink panel, 128x296
+'   (e.g., Parallax #28084, Waveshare #12563)
     reset()
     repeat until disp_rdy()
 
@@ -447,30 +472,6 @@ PUB reset() | tmp
         writereg(core.SWRESET, 0, 0)            '   soft-reset
         waitus(core.T_POR)
     repeat until disp_rdy()
-
-    disp_lines(_disp_height)                    ' MUX
-    gate_high_voltage(22_000)                   ' VGH
-    gate_low_voltage(-20_000)                   ' VGL
-    vsh1_voltage(15_000)                        ' VSH/VSL
-    dummy_line_per(26)
-    gate_line_width(62)
-
-    tmp.byte[0] := $D7
-    tmp.byte[1] := $D6
-    tmp.byte[2] := $9D
-    writereg(core.BOOST_CTRL, 3, @tmp)
-
-    tmp := $A8
-    writereg(core.WR_VCOM, 1, @tmp)
-
-    'dataentrymode(%0_11)
-
-    wr_lut(@_lut_2p9_bw_full)
-
-    repeat until disp_rdy()
-
-    draw_area(0, 0, _disp_width-1, _disp_height-1)
-    disp_pos(0, 0)
 
 PUB show() | tmp
 ' Send the draw buffer to the display
