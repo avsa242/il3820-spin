@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller (P2 version)
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Nov 5, 2022
+    Updated Dec 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -280,7 +280,7 @@ PUB disp_pos(x, y) | tmp
 PUB disp_rdy(): flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
-    return (ina[_BUSY] == 1)
+    return (pinr(_BUSY) == 0)
 
 PUB disp_upd_ctrl2() | tmp
 
@@ -438,10 +438,10 @@ PUB point(x, y): pix_clr
 
 PUB reset() | tmp
 ' Reset the display controller
-    if (lookdown(_RST: 0..31))                  ' only touch the reset pin
-        outa[_RST] := 0
+    if (lookdown(_RST: 0..63))                  ' only touch the reset pin
+        pinl(_RST)
         waitus(core.T_POR)
-        outa[_RST] := 1
+        pinh(_RST)
         waitus(core.T_POR)
     else                                        ' otherwise, just perform
         writereg(core.SWRESET, 0, 0)            '   soft-reset

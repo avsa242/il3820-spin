@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Nov 5, 2022
+    Updated Dec 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -288,7 +288,7 @@ PUB disp_pos(x, y) | tmp
 PUB disp_rdy{}: flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
-    return (ina[_BUSY] == 1)
+    return (ina[_BUSY] == 0)
 
 PUB disp_upd_ctrl2{} | tmp
 
