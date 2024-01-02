@@ -17,20 +17,22 @@ P1/SPIN1:
 * spin-standard-library
 * P1/SPIN1: 1 extra core/cog for the PASM I2C engine
 * graphics.common.spinh (provided by spin-standard-library)
+* `(WIDTH * HEIGHT) / 8` bytes of RAM for the display buffer (internal to the driver)
 
 P2/SPIN2:
 * p2-spin-standard-library
 * graphics.common.spin2h (provided by p2-spin-standard-library)
+* `(WIDTH * HEIGHT) / 8` bytes of RAM for the display buffer (internal to the driver)
 
 
 ## Compiler Compatibility
 
 | Processor | Language | Compiler               | Backend      | Status                |
 |-----------|----------|------------------------|--------------|-----------------------|
-| P1        | SPIN1    | FlexSpin (6.5.0)       | Bytecode     | OK                    |
-| P1        | SPIN1    | FlexSpin (6.5.0)       | Native/PASM  | OK                    |
-| P2        | SPIN2    | FlexSpin (6.5.0)       | NuCode       | FTBFS                 |
-| P2        | SPIN2    | FlexSpin (6.5.0)       | Native/PASM2 | OK                    |
+| P1        | SPIN1    | FlexSpin (6.8.0)       | Bytecode     | OK                    |
+| P1        | SPIN1    | FlexSpin (6.8.0)       | Native/PASM  | OK                    |
+| P2        | SPIN2    | FlexSpin (6.8.0)       | NuCode       | OK (Untested)         |
+| P2        | SPIN2    | FlexSpin (6.8.0)       | Native/PASM2 | OK                    |
 
 (other versions or toolchains not listed are __not supported__, and _may or may not_ work)
 
