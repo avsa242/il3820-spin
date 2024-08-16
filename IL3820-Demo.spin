@@ -1,26 +1,26 @@
 {
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
     Filename:       Il3820-Demo.spin
     Description:    IL3820-specific setup for E-Ink/E-Paper graphics demo
     Author:         Jesse Burt
     Started:        Jul 2, 2022
     Updated:        Jan 28, 2024
     Copyright (c) 2024 - See end of file for terms of use.
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 }
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     fnt:    "font.5x8"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     epaper: "display.epaper.il3820" | WIDTH=128, HEIGHT=296, ...
                                         CS=21, SCK=20, MOSI=19, DC=18, RST=17, BUSY=16
 
