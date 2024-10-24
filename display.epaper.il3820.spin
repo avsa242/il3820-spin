@@ -4,7 +4,7 @@
     Description:    Driver for the IL3820 electrophoretic display controller
     Author:         Jesse Burt
     Started:        Nov 30, 2019
-    Updated:        Aug 16, 2024
+    Updated:        Oct 24, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -187,7 +187,7 @@ PUB stop()
     bytefill(@_disp_width, 0, 4)
 
 
-PUB defaults()
+PUB defaults() | tmp
 ' Factory defaults
     reset()
     disp_lines(_disp_height)                    ' MUX
