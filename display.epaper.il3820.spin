@@ -4,8 +4,8 @@
     Description:    Driver for the IL3820 electrophoretic display controller
     Author:         Jesse Burt
     Started:        Nov 30, 2019
-    Updated:        Oct 24, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Feb 7, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
 
@@ -32,21 +32,21 @@ CON
     BUSY            = 5
     ' --
 
+    BPP             = 1                             ' bits per pixel/color depth of the display
+    BYTESPERPX      = 1 #> (BPP/8)                  ' limit to minimum of 1
+    BPPDIV          = BYTESPERPX #> (8 / BPP)       ' limit to range BYTESPERPX .. (8/BPP)
+    BUFF_SZ         = (WIDTH * HEIGHT) / BPPDIV
+    MAX_COLOR       = (1 << BPP)-1
     XMAX            = WIDTH-1
     YMAX            = HEIGHT-1
     CENTERX         = WIDTH/2
     CENTERY         = HEIGHT/2
-    BYTESPERLN      = WIDTH * BYTESPERPX
-    BUFF_SZ         = ((WIDTH * HEIGHT) * BYTESPERPX) / 8
 
 
 ' Colors
     BLACK           = 0
     WHITE           = $FF
     INVERT          = -1
-
-    MAX_COLOR       = 1
-    BYTESPERPX      = 1
 
     MSB             = 1
     LSB             = 0
@@ -619,7 +619,7 @@ DAT
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
