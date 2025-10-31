@@ -50,7 +50,7 @@ CON
 
     DATA_ENT_MD             = $11
     DATA_ENT_MD_MASK        = $07
-        AM                  = 3
+        AM                  = 2
         ID                  = 0
         ID_BITS             = %11
         AM_MASK             = (1 << AM) ^ DATA_ENT_MD_MASK

@@ -135,7 +135,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, SCK_FREQ, DISP_
 '   CS_PIN:     chip select
 '   SCK_PIN:    serial clock (may be labeled 'CLK')
 '   MOSI_PIN:   master-out slave-in (may be labeled 'DIN')
-'   DC_PIN:     data/writereg (sometimes called 'register select')
+'   DC_PIN:     data/command (sometimes called 'register select')
 '   RST_PIN:    reset (optional)
 '       (Specify something invalid to ignore (e.g., -1). You must then either connect it to
 '       the display's supply voltage, or you could connect it to the Propeller's reset pin, which
