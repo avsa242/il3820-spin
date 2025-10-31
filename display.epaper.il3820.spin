@@ -4,7 +4,7 @@
     Description:    Driver for the IL3820 electrophoretic display controller
     Author:         Jesse Burt
     Started:        Nov 30, 2019
-    Updated:        Feb 7, 2025
+    Updated:        Oct 31, 2025
     Copyright (c) 2025 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -13,7 +13,7 @@
 #define MEMMV_NATIVE bytemove
 #include "graphics.common.spinh"
 #ifdef GFX_DIRECT
-#   error "GFX_DIRECT not supported by this driver"
+# error "GFX_DIRECT not supported by this driver"
 #endif
 
 CON
@@ -121,7 +121,7 @@ OBJ
 #else
     spi:    "com.spi.1mhz"                      ' PASM SPI engine
 #endif
-    core:   "core.con.il3820"
+    core:   "core.con.il3820"                   ' HW-specific constants
     time:   "time"
 
 
@@ -129,17 +129,18 @@ PUB null()
 ' This is not a top-level object
 
 
-PUB start(): status
+PUB start(): s
 ' Start using default I/O settings
+'   Returns: cog ID + 1 of the SPI engine
     return startx(CS, SCK, MOSI, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuffer)
 
 
-PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
+PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb=0): s
 ' Start using custom I/O pins
 '   CS_PIN:     chip select
 '   SCK_PIN:    serial clock (may be labeled 'CLK')
 '   MOSI_PIN:   master-out slave-in (may be labeled 'DIN')
-'   DC_PIN:     data/command (sometimes called 'register select')
+'   DC_PIN:     data/writereg (sometimes called 'register select')
 '   RST_PIN:    reset (optional)
 '       (Specify something invalid to ignore (e.g., -1). You must then either connect it to
 '       the display's supply voltage, or you could connect it to the Propeller's reset pin, which
@@ -147,13 +148,13 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
 '   BUSY_PIN:   display busy state
 '   DISP_W:     display width, in pixels
 '   DISP_H:     display height, in pixels
-'   ptr_fb:     pointer to display/frame buffer
+'   ptr_fb:     pointer to display/frame buffer (optional; default uses the internal framebuffer)
 
 '   Returns: cog ID + 1 of the SPI engine
     if (    lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
             lookdown(MOSI_PIN: 0..31) and lookdown(DC_PIN: 0..31) and ...
             lookdown(RST_PIN: 0..31) and lookdown(BUSY_PIN: 0..31) )
-        if ( status := spi.init(SCK_PIN, MOSI_PIN, MOSI_PIN, core.SPI_MODE) )
+        if ( s := spi.init(SCK_PIN, MOSI_PIN, MOSI_PIN, core.SPI_MODE) )
             _CS := CS_PIN
             _DC := DC_PIN
             _RST := RST_PIN
@@ -169,7 +170,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
             _buff_sz := _disp_width * ((_disp_height + 7) / 8)
             set_address(ptr_fb)
             reset()
-            return status
+            return s
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -209,7 +210,8 @@ PUB defaults() | tmp
 
     wr_lut(@_lut_2p9_bw_full)
 
-    repeat until disp_rdy()
+    repeat
+    until disp_rdy()
 
     draw_area(0, 0, _disp_width-1, _disp_height-1)
     disp_pos(0, 0)
@@ -220,10 +222,9 @@ PUB preset_e029a01_bw()
 ' Presets for 2.9" BW E-ink panel, 128x296
 '   (e.g., Parallax #28084, Waveshare #12563)
     reset()
-    repeat until disp_rdy()
+    repeat
+    until disp_rdy()
 
-    analog_blk_ctrl()
-    dig_blk_ctrl()
 '    gatestartpos(0)
     disp_lines(296)
 '    gatefirstchan(0)
@@ -249,10 +250,11 @@ PUB preset_e029a01_bw()
 '    gatelinewidth(_lut_2p13_bw_full[75])
     wr_lut(@_lut_2p9_bw_full)
 '    disp_pos(0, 0)
-    repeat until disp_rdy()
+    repeat
+    until disp_rdy()
 
 
-PUB addr_ctr_mode(mode): curr_mode
+PUB addr_ctr_mode(md): c
 ' Set address increment/decrement mode
 '   Valid values:
 '       YD_XD (%00): Y-decrement, X-decrement
@@ -260,43 +262,37 @@ PUB addr_ctr_mode(mode): curr_mode
 '       YI_XD (%10): Y-increment, X-decrement
 '      *YI_XI (%11): Y-increment, X-increment
 '   Any other value returns the current (cached) setting
-    curr_mode := _data_entr_mode
-    case mode
+    c := _data_entr_mode
+    case md
         YD_XD, YD_XI, YI_XD, YI_XI:
-            mode := ((curr_mode & core.ID_MASK) | mode)
-            if (mode == curr_mode)              ' no change to shadow reg;
+            md := ((c & core.ID_MASK) | md)
+            if (md == c)                        ' no change to shadow reg;
                 return                          ' don't bother writing
             else
-                _data_entr_mode := mode
+                _data_entr_mode := md
                 writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
         other:
-            return (curr_mode & core.ID_BITS)
+            return (c & core.ID_BITS)
 
 
-PUB addr_mode(mode): curr_mode
+PUB addr_mode(md): c
 ' Set display addressing mode
 '   Valid values:
 '      *HORIZ (0)
 '       VERT (1)
 '   Any other value returns the current (cached) setting
-    curr_mode := _data_entr_mode
-    case mode
+    c := _data_entr_mode
+    case md
         HORIZ, VERT:
-            mode <<= core.AM
-            mode := ((curr_mode & core.AM_MASK) | mode)
-            if (mode == curr_mode)                      ' no change to shadow reg;
-                return                                  ' don't bother writing
+            md <<= core.AM
+            md := ((c & core.AM_MASK) | md)
+            if (md == c)                        ' no change to shadow reg;
+                return                          ' don't bother writing
             else
-                _data_entr_mode := mode
+                _data_entr_mode := md
                 writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
         other:
-            return ((curr_mode >> core.AM) & 1)
-
-
-PUB analog_blk_ctrl() | tmp
-' Analog Block control
-    tmp := $54
-    writereg(core.ANLG_BLK_CTRL, 1, @tmp)
+            return ((c >> core.AM) & 1)
 
 
 #ifndef GFX_DIRECT
@@ -304,12 +300,6 @@ PUB clear()
 ' Clear the display buffer
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
-
-
-PUB dig_blk_ctrl() | tmp
-' Digital Block control
-    tmp := $3b
-    writereg(core.DIGI_BLK_CTRL, 1, @tmp)
 
 
 PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
@@ -329,23 +319,23 @@ PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core.RAM_Y_WIND, 4, @tmpy)
 
 
-PUB disp_lines(lines): curr_lines
+PUB disp_lines(l): c
 ' Set display visible lines
 '   Valid values: 1..296
 '   Any other value returns the current (cached) setting
-    curr_lines.byte[0] := _drv_out_ctrl[0]
-    curr_lines.byte[1] := _drv_out_ctrl[1]
-    case lines
+    c.byte[0] := _drv_out_ctrl[0]
+    c.byte[1] := _drv_out_ctrl[1]
+    case l
         1..296:
-            lines -= 1
-            if (lines == curr_lines)                    ' no change to shadow reg;
-                return                                  ' don't bother writing
+            l -= 1
+            if (l == c)                         ' no change to shadow reg;
+                return                          ' don't bother writing
             else
-                _drv_out_ctrl[0] := lines.byte[0]
-                _drv_out_ctrl[1] := lines.byte[1]
+                _drv_out_ctrl[0] := l.byte[0]
+                _drv_out_ctrl[1] := l.byte[1]
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
         other:
-            return (curr_lines + 1)
+            return (c + 1)
 
 
 PUB disp_pos(x, y) | tmp
@@ -357,8 +347,8 @@ PUB disp_pos(x, y) | tmp
     writereg(core.RAM_Y, 2, @y)
 
 
-PUB disp_rdy(): flag
-' Flag indicating display is ready to accept commands
+PUB disp_rdy(): r
+' Flag indicating display is ready to accept writeregs
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
     return (ina[_BUSY] == 0)
 
@@ -369,80 +359,80 @@ PUB disp_upd_ctrl2() | tmp
     writereg(core.DISP_UP_CTRL2, 1, @tmp)
 
 
-PUB dummy_line_per(period)
+PUB dummy_line_per(p)
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
 '   Valid values: 0..127
 '   Any other value is ignored
-    case period
+    case p
         0..127:
-            writereg(core.DUMMY_LN_PER, 1, @period)
+            writereg(core.DUMMY_LN_PER, 1, @p)
         other:
             return
 
 
-PUB gate_first_chan(ch): curr_ch
+PUB gate_first_chan(ch): c
 ' Set first output gate
 '   Valid values:
 '       0: G0 first channel; output sequence is G0, G1, G2, G3...
 '       1: G1 first channel; output sequence is G1, G0, G3, G2...
 '   Any other value returns the current (cached) setting
-    curr_ch := _drv_out_ctrl[2]
+    c := _drv_out_ctrl[2]
     case ch
         0, 1:
             ch <<= core.GD
-            ch := ((curr_ch & core.GD_MASK) | ch)
-            if (ch == curr_ch)
+            ch := ((c & core.GD_MASK) | ch)
+            if (ch == c)
                 return
             else
                 _drv_out_ctrl[2] := ch
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
         other:
-            return ((curr_ch >> core.GD) & 1)
+            return ((c >> core.GD) & 1)
 
 
-PUB gate_high_voltage(lvl): curr_lvl
+PUB gate_high_voltage(lvl): c
 ' Set gate driving voltage (high level, VGH), in millivolts
 '   Valid values: 15_000..22_000 (default 22_000)
 '   Any other value returns the current setting
-    curr_lvl := _gate_drv_volt
+    c := _gate_drv_volt
     case lvl
         15_000..22_000:
             lvl := ((lvl / 500) - 30) << core.VGH
-            lvl := ((curr_lvl & core.VGH_MASK) | lvl)
+            lvl := ((c & core.VGH_MASK) | lvl)
             _gate_drv_volt  := lvl
             writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
         other:
-            curr_lvl := (curr_lvl >> core.VGH) & core.VGH_BITS
-            return ((curr_lvl + 30) * 500)
+            c := (c >> core.VGH) & core.VGH_BITS
+            return ((c + 30) * 500)
 
 
-PUB gate_line_width(usec)
+PUB gate_line_width(w)
 ' Set gate line width, in microseconds (figure TGate)
 '   Valid values: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
 '   Any other value is ignored
-    case usec
+    case w
         30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208:
-            usec := lookdownz(usec: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, ...
+            w := lookdownz(w: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, ...
                                     78, 88, 104, 125, 156, 208)
-            writereg(core.GATE_LN_WD, 1, @usec)
+            writereg(core.GATE_LN_WD, 1, @w)
         other:
             return
 
 
-PUB gate_low_voltage(voltage): curr_vlt
+PUB gate_low_voltage(v): c
 ' Set gate driving voltage (low level, VGL), in millivolts
 '   Valid values: -20_000..-15_000 (default: -20_000)
 '   Any other value returns the current setting
-    curr_vlt := _gate_drv_volt
-    case voltage
+    c := _gate_drv_volt
+    case v
         -20_000..-15_000:
-            voltage := (||(voltage) / 500) - 30
-            voltage := ((curr_vlt & core.VGL_MASK) | voltage)
-            _gate_drv_volt := voltage
+            v := (abs(v) / 500) - 30
+            v := ((c & core.VGL_MASK) | v)
+            _gate_drv_volt := v
             writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
         other:
-            curr_vlt &= core.VGL_BITS
-            return ((curr_vlt + 30) * 500) * -1
+            c &= core.VGL_BITS
+            return ((c + 30) * 500) * -1
 
 
 PUB gate_start_pos(row)
@@ -450,22 +440,22 @@ PUB gate_start_pos(row)
     writereg(core.GATE_ST_POS, 2, @row)
 
 
-PUB interlace_ena(state): curr_state
+PUB interlace_ena(i): c
 ' Alternate direction of every other display line
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
-    curr_state := _drv_out_ctrl[2]
-    case ||(state)
+    c := _drv_out_ctrl[2]
+    case abs(i)
         0, 1:
-            state := ||(state) << core.SM
-            state := ((curr_state & core.SM_MASK) | state)
-            if (state == curr_state)
+            i := abs(i) << core.SM
+            i := ((c & core.SM_MASK) | i)
+            if (i == c)
                 return
             else
-                _drv_out_ctrl[2] := state
+                _drv_out_ctrl[2] := i
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
         other:
-            return (((curr_state >> core.SM) & 1) == 1)
+            return (((c >> core.SM) & 1) == 1)
 
 
 PUB master_act()
@@ -473,25 +463,25 @@ PUB master_act()
     command(core.MASTER_ACT)
 
 
-PUB mirror_v(state): curr_state  'XXX not functional yet
+PUB mirror_v(m): c  'XXX not functional yet
 ' Mirror display, vertically
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
-    curr_state := _drv_out_ctrl[2]
-    case ||(state)
+    c := _drv_out_ctrl[2]
+    case abs(m)
         0, 1:
-            state := ||(state) << core.TB
-            state := ((curr_state & core.TB_MASK) | state)
-            if (state == curr_state)
+            m := abs(m) << core.TB
+            m := ((c & core.TB_MASK) | m)
+            if (m == c)
                 return
             else
-                _drv_out_ctrl[2] := state
+                _drv_out_ctrl[2] := m
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
         other:
-            return (((curr_state >> core.TB) & 1) == 1)
+            return (((c >> core.TB) & 1) == 1)
 
 
-PUB plot(x, y, color)
+PUB plot(x, y, c)
 ' Plot pixel at (x, y) in color
     if ( (x < 0) or (x > _disp_xmax) or (y < 0) or (y > _disp_ymax) )
         return                                  ' coords out of bounds, ignore
@@ -500,7 +490,7 @@ PUB plot(x, y, color)
 '   (not implemented)
 #else
 ' buffered display
-    case color
+    case c
         1:
             byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
         0:
@@ -513,7 +503,7 @@ PUB plot(x, y, color)
 
 
 #ifndef GFX_DIRECT
-PUB point(x, y): pix_clr
+PUB point(x, y): c
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -533,15 +523,18 @@ PUB reset() | tmp
     else                                        ' otherwise, just perform
         command(core.SWRESET)
         time.usleep(core.T_POR)
-    repeat until disp_rdy()
+
+    repeat
+    until disp_rdy()
 
 
 PUB show() | tmp
 ' Send the draw buffer to the display
-    draw_area(0, 0, _disp_width-1, _disp_height-1)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
     disp_pos(0, 0)
 
-    repeat until disp_rdy()
+    repeat
+    until disp_rdy()
 
     writereg(core.WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
 
@@ -550,24 +543,25 @@ PUB show() | tmp
     command(core.MASTER_ACT)
     command(core.NOOP)
 
-    repeat until disp_rdy()
+    repeat
+    until disp_rdy()
 
 
-PUB vsh1_voltage(voltage)
+PUB vsh1_voltage(v)
 ' Set source drive (VSH/VSL) level, in millivolts
 '   Valid values: 10_000..17_000
 '   Any other value is ignored
-    case voltage
+    case v
         10_000..17_000:
-            voltage := (voltage / 500) - 20
-            writereg(core.SRC_DRV_CTRL, 1, @voltage)
+            v := (v / 500) - 20
+            writereg(core.SRC_DRV_CTRL, 1, @v)
         other:
             return
 
 
-PUB wr_lut(ptr_lut)
+PUB wr_lut(p_lut)
 ' Write display-specific pixel waveform LookUp Table
-    writereg(core.WR_LUT, 30, ptr_lut)
+    writereg(core.WR_LUT, 30, p_lut)
 
 
 CON
@@ -575,14 +569,13 @@ CON
     CMD     = 0
     DATA    = 1
 
+
 PRI command(c)
 ' Issue command without parameters to display
-    case c
-        core.SWRESET, core.MASTER_ACT, core.NOOP:
-            outa[_DC] := CMD
-            outa[_CS] := 0
-            spi.wr_byte(c)
-            outa[_CS] := 1
+    outa[_DC] := CMD
+    outa[_CS] := 0
+    spi.wr_byte(c)
+    outa[_CS] := 1
 
 
 #ifndef GFX_DIRECT
@@ -595,19 +588,14 @@ PRI memfill(xs, ys, val, count)
 #endif
 
 
-PRI writereg(reg_nr, nr_bytes, ptr_buff)
-' Write nr_bytes from ptr_buff to device
-    case reg_nr
-        $01, $03, $04, $0C, $10, $11, $1A, $21, $22, $24, $2C, $32, $3A..$3C, $44, $45, $4E, $4F:
-            { commands with parameters }
-            outa[_CS] := 0
-            outa[_DC] := CMD                    ' D/C low = command
-            spi.wr_byte(reg_nr)
-            outa[_DC] := DATA                   ' D/C high = data
-            spi.wrblock_lsbf(ptr_buff, nr_bytes)
-            outa[_CS] := 1
-        other:
-            return
+PRI writereg(c, len, p_src)
+' Write value to register/issue writereg
+    outa[_CS] := 0
+    outa[_DC] := CMD                            ' D/C low = writereg
+    spi.wr_byte(c)                              ' write writereg
+    outa[_DC] := DATA                           ' D/C high = data
+    spi.wrblock_lsbf(p_src, len)                ' write parameters or data, if there are any
+    outa[_CS] := 1
 
 
 DAT

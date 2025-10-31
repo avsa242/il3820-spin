@@ -22,7 +22,7 @@ OBJ
     fnt:    "font.5x8"
     ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     epaper: "display.epaper.il3820" | WIDTH=128, HEIGHT=296, ...
-                                        CS=21, SCK=20, MOSI=19, DC=18, RST=17, BUSY=16
+                                        CS=0, SCK=1, MOSI=2, DC=3, RST=4, BUSY=5
 
 
 PUB main()

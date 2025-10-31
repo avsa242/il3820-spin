@@ -4,8 +4,8 @@
     Description:    IL3820-specific constants
     Author:         Jesse Burt
     Started:        Nov 30, 2019
-    Updated:        Aug 16, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Oct 31, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
 
@@ -110,8 +110,6 @@ CON
     RAM_Y_WIND              = $45
     RAM_X                   = $4E
     RAM_Y                   = $4F
-    ANLG_BLK_CTRL           = $74
-    DIGI_BLK_CTRL           = $7E
     NOOP                    = $FF
 
 
@@ -121,7 +119,7 @@ PUB null()
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
