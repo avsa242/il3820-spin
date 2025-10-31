@@ -570,12 +570,12 @@ PRI memfill(xs, ys, val, count)
 
 
 PRI writereg(c, len, p_src)
-' Write value to register/issue writereg
+' Write value to register/issue command
     outa[_CS] := 0
-    outa[_DC] := CMD                            ' D/C low = writereg
-    spi.wr_byte(c)                              ' write writereg
+    outa[_DC] := CMD                            ' D/C low = command
+    spi.wr_byte(c)                              ' write command
     outa[_DC] := DATA                           ' D/C high = data
-    spi.wrblock_lsbf(p_src, len)                ' write parameters or data, if there are any
+    spi.wrblock_lsbf(p_src, len)                ' write parameters or data
     outa[_CS] := 1
 
 
