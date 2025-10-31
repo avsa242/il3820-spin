@@ -254,45 +254,39 @@ PUB preset_e029a01_bw()
     until disp_rdy()
 
 
-PUB addr_ctr_mode(md): c
+PUB addr_ctr_mode(md)
 ' Set address increment/decrement mode
-'   Valid values:
+'   md:
 '       YD_XD (%00): Y-decrement, X-decrement
 '       YD_XI (%01): Y-decrement, X-increment
 '       YI_XD (%10): Y-increment, X-decrement
 '      *YI_XI (%11): Y-increment, X-increment
-'   Any other value returns the current (cached) setting
-    c := _data_entr_mode
+'       other values ignored
     case md
         YD_XD, YD_XI, YI_XD, YI_XI:
-            md := ((c & core.ID_MASK) | md)
-            if (md == c)                        ' no change to shadow reg;
+            md := ((_data_entr_mode & core.ID_MASK) | md)
+            if (md == _data_entr_mode)          ' no change to shadow reg;
                 return                          ' don't bother writing
             else
-                _data_entr_mode := md
+                _data_entr_mode := md           ' update shadow reg
                 writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
-        other:
-            return (c & core.ID_BITS)
 
 
-PUB addr_mode(md): c
+PUB addr_mode(md)
 ' Set display addressing mode
-'   Valid values:
+'   md:
 '      *HORIZ (0)
 '       VERT (1)
-'   Any other value returns the current (cached) setting
-    c := _data_entr_mode
+'       other values ignored
     case md
         HORIZ, VERT:
             md <<= core.AM
-            md := ((c & core.AM_MASK) | md)
-            if (md == c)                        ' no change to shadow reg;
+            md := ((_data_entr_mode & core.AM_MASK) | md)
+            if (md == _data_entr_mode)          ' no change to shadow reg;
                 return                          ' don't bother writing
             else
-                _data_entr_mode := md
+                _data_entr_mode := md           ' update shadow reg
                 writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
-        other:
-            return ((c >> core.AM) & 1)
 
 
 #ifndef GFX_DIRECT
@@ -319,23 +313,20 @@ PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core.RAM_Y_WIND, 4, @tmpy)
 
 
-PUB disp_lines(l): c
+PUB disp_lines(l)
 ' Set display visible lines
-'   Valid values: 1..296
-'   Any other value returns the current (cached) setting
-    c.byte[0] := _drv_out_ctrl[0]
-    c.byte[1] := _drv_out_ctrl[1]
+'   l:
+'       1..296
+'       other values ignored
     case l
         1..296:
             l -= 1
-            if (l == c)                         ' no change to shadow reg;
-                return                          ' don't bother writing
+            if ( l == ( (_drv_out_ctrl[1] << 8) | _drv_out_ctrl[0]) )
+                return
             else
                 _drv_out_ctrl[0] := l.byte[0]
                 _drv_out_ctrl[1] := l.byte[1]
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
-        other:
-            return (c + 1)
 
 
 PUB disp_pos(x, y) | tmp
@@ -361,78 +352,73 @@ PUB disp_upd_ctrl2() | tmp
 
 PUB dummy_line_per(p)
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
-'   Valid values: 0..127
-'   Any other value is ignored
+'   p:
+'       0..127
+'       other values ignored
     case p
         0..127:
             writereg(core.DUMMY_LN_PER, 1, @p)
-        other:
-            return
 
 
-PUB gate_first_chan(ch): c
+PUB gate_first_chan(ch)
 ' Set first output gate
-'   Valid values:
+'   ch:
 '       0: G0 first channel; output sequence is G0, G1, G2, G3...
 '       1: G1 first channel; output sequence is G1, G0, G3, G2...
-'   Any other value returns the current (cached) setting
-    c := _drv_out_ctrl[2]
+'       other values ignored
     case ch
         0, 1:
             ch <<= core.GD
-            ch := ((c & core.GD_MASK) | ch)
-            if (ch == c)
+            ch := ((_drv_out_ctrl[2] & core.GD_MASK) | ch)
+            if ( ch == _drv_out_ctrl[2] )
                 return
             else
                 _drv_out_ctrl[2] := ch
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
-        other:
-            return ((c >> core.GD) & 1)
 
 
-PUB gate_high_voltage(lvl): c
+PUB gate_high_voltage(v)
 ' Set gate driving voltage (high level, VGH), in millivolts
-'   Valid values: 15_000..22_000 (default 22_000)
-'   Any other value returns the current setting
-    c := _gate_drv_volt
-    case lvl
+'   v:
+'       15_000..22_000 (default 22_000)
+'       other values ignored
+    case v
         15_000..22_000:
-            lvl := ((lvl / 500) - 30) << core.VGH
-            lvl := ((c & core.VGH_MASK) | lvl)
-            _gate_drv_volt  := lvl
-            writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
-        other:
-            c := (c >> core.VGH) & core.VGH_BITS
-            return ((c + 30) * 500)
+            v := ((v / 500) - 30) << core.VGH
+            v := ((_gate_drv_volt & core.VGH_MASK) | v)
+            if ( v == _gate_drv_volt )
+                return
+            else
+                _gate_drv_volt  := v
+                writereg(core.GATE_DRV_CTRL, 1, @v)
 
 
 PUB gate_line_width(w)
 ' Set gate line width, in microseconds (figure TGate)
-'   Valid values: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
-'   Any other value is ignored
+'   w:
+'       30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208
+'       other values ignored
     case w
         30, 34, 38, 40, 44, 46, 52, 56, 62, 68, 78, 88, 104, 125, 156, 208:
             w := lookdownz(w: 30, 34, 38, 40, 44, 46, 52, 56, 62, 68, ...
                                     78, 88, 104, 125, 156, 208)
             writereg(core.GATE_LN_WD, 1, @w)
-        other:
-            return
 
 
-PUB gate_low_voltage(v): c
+PUB gate_low_voltage(v)
 ' Set gate driving voltage (low level, VGL), in millivolts
-'   Valid values: -20_000..-15_000 (default: -20_000)
-'   Any other value returns the current setting
-    c := _gate_drv_volt
+'   v:
+'       -20_000..-15_000 (default: -20_000)
+'       other values ignored
     case v
         -20_000..-15_000:
             v := (abs(v) / 500) - 30
-            v := ((c & core.VGL_MASK) | v)
-            _gate_drv_volt := v
-            writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
-        other:
-            c &= core.VGL_BITS
-            return ((c + 30) * 500) * -1
+            v := ((_gate_drv_volt & core.VGL_MASK) | v)
+            if ( v == _gate_drv_volt )
+                return
+            else
+                _gate_drv_volt := v
+                writereg(core.GATE_DRV_CTRL, 1, @v)
 
 
 PUB gate_start_pos(row)
@@ -442,20 +428,18 @@ PUB gate_start_pos(row)
 
 PUB interlace_ena(i): c
 ' Alternate direction of every other display line
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value returns the current (cached) setting
-    c := _drv_out_ctrl[2]
+'   i:
+'       TRUE (-1 or 1), FALSE (0)
+'       other values ignored
     case abs(i)
         0, 1:
             i := abs(i) << core.SM
-            i := ((c & core.SM_MASK) | i)
-            if (i == c)
+            i := ((_drv_out_ctrl[2] & core.SM_MASK) | i)
+            if (i == _drv_out_ctrl[2])
                 return
             else
                 _drv_out_ctrl[2] := i
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
-        other:
-            return (((c >> core.SM) & 1) == 1)
 
 
 PUB master_act()
@@ -463,22 +447,20 @@ PUB master_act()
     command(core.MASTER_ACT)
 
 
-PUB mirror_v(m): c  'XXX not functional yet
+PUB mirror_v(m)  'XXX not functional yet
 ' Mirror display, vertically
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value returns the current (cached) setting
-    c := _drv_out_ctrl[2]
+'   m:
+'       TRUE (-1 or 1), FALSE (0)
+'       other values ignored
     case abs(m)
         0, 1:
             m := abs(m) << core.TB
-            m := ((c & core.TB_MASK) | m)
-            if (m == c)
+            m := ((_drv_out_ctrl[2] & core.TB_MASK) | m)
+            if (m == _drv_out_ctrl[2])
                 return
             else
                 _drv_out_ctrl[2] := m
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
-        other:
-            return (((c >> core.TB) & 1) == 1)
 
 
 PUB plot(x, y, c)
@@ -549,14 +531,13 @@ PUB show() | tmp
 
 PUB vsh1_voltage(v)
 ' Set source drive (VSH/VSL) level, in millivolts
-'   Valid values: 10_000..17_000
-'   Any other value is ignored
+'   v:
+'       10_000..17_000
+'       other values ignored
     case v
         10_000..17_000:
             v := (v / 500) - 20
             writereg(core.SRC_DRV_CTRL, 1, @v)
-        other:
-            return
 
 
 PUB wr_lut(p_lut)
