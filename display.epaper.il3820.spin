@@ -4,8 +4,8 @@
     Description:    Driver for the IL3820 electrophoretic display controller
     Author:         Jesse Burt
     Started:        Nov 30, 2019
-    Updated:        Oct 31, 2025
-    Copyright (c) 2025 - See end of file for terms of use.
+    Updated:        Mar 28, 2026
+    Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
 
@@ -18,23 +18,29 @@
 
 CON
 
-    { -- default I/O settings; these can be overridden in the parent object }
-    { display dimensions }
+    ' -- default I/O settings; these can be overridden in the parent object
+    ' display dimensions
+    ' NOTE: These are hardware-specific panel dimensions that don't change while the driver is
+    '   running, and generally don't need to be changed from the default below. They don't
+    '   reflect what orientation is being used to draw the display, which can optionally
+    '   be changed at runtime using set_rotation() (see graphics.common.spinh).
     WIDTH           = 128
     HEIGHT          = 296
 
-    { SPI }
+    ' SPI
     CS              = 0
     SCK             = 1
     MOSI            = 2
     DC              = 3
     RST             = 4
     BUSY            = 5
+    SPI_FREQ        = 1_000_000
     ' --
 
+    ' automatically computed - do not change
     BPP             = 1                             ' bits per pixel/color depth of the display
     BYTESPERPX      = 1 #> (BPP/8)                  ' limit to minimum of 1
-    BPPDIV          = BYTESPERPX #> (8 / BPP)       ' limit to range BYTESPERPX .. (8/BPP)
+    BPPDIV          = (8 / BPP) #> BYTESPERPX       ' limit to range BYTESPERPX .. (8/BPP)
     BUFF_SZ         = (WIDTH * HEIGHT) / BPPDIV
     MAX_COLOR       = (1 << BPP)-1
     XMAX            = WIDTH-1
@@ -48,8 +54,6 @@ CON
     WHITE           = $FF
     INVERT          = -1
 
-    MSB             = 1
-    LSB             = 0
 
 ' Border waveform control
     GS_TRANS        = %00
@@ -167,7 +171,6 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
             dira[_DC] := 1
 
             set_dims(DISP_W, DISP_H)
-            _buff_sz := _disp_width * ((_disp_height + 7) / 8)
             set_address(ptr_fb)
             reset()
             return s
@@ -208,12 +211,12 @@ PUB defaults() | tmp
 
     'dataentrymode(%0_11)
 
-    wr_lut(@_lut_2p9_bw_full)
+    wr_lut(@_lut_e029a01_bw_full)
 
     repeat
     until disp_rdy()
 
-    draw_area(0, 0, _disp_width-1, _disp_height-1)
+    draw_area(0, 0, XMAX, YMAX)
     disp_pos(0, 0)
 
 
@@ -248,7 +251,7 @@ PUB preset_e029a01_bw()
 
 '    dummylineper(_lut_2p13_bw_full[74])
 '    gatelinewidth(_lut_2p13_bw_full[75])
-    wr_lut(@_lut_2p9_bw_full)
+    wr_lut(@_lut_e029a01_bw_full)
 '    disp_pos(0, 0)
     repeat
     until disp_rdy()
@@ -292,7 +295,7 @@ PUB addr_mode(md)
 #ifndef GFX_DIRECT
 PUB clear()
 ' Clear the display buffer
-    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+    bytefill(_ptr_drawbuffer, _bgcolor, BUFF_SZ)
 #endif
 
 
@@ -463,25 +466,38 @@ PUB mirror_v(m)  'XXX not functional yet
                 writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
 
-PUB plot(x, y, c)
-' Plot pixel at (x, y) in color
+PUB plot(x, y, c) | t, o, mask
+' Plot pixel
+'   x, y:   coordinates to draw
+'   c:      pixel color
     if ( (x < 0) or (x > _disp_xmax) or (y < 0) or (y > _disp_ymax) )
         return                                  ' coords out of bounds, ignore
-#ifdef GFX_DIRECT
-' direct to display
-'   (not implemented)
-#else
-' buffered display
+
+    case _rotation
+        1:                                      ' 90deg CW
+            t := x
+            x := WIDTH - 1 - y
+            y := t
+        2:                                      ' 180deg
+            x := WIDTH - x - 1
+            y := HEIGHT - y - 1
+        3:                                      ' 270deg
+            t := x
+            x := y
+            y := HEIGHT-1-t
+
+    o := _ptr_drawbuffer + ( (x / 8) + y * ((WIDTH + 7) / 8) )
+    mask := $80 >> (x & 7)
+
     case c
-        1:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
-        0:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] &= !($80 >> (x & 7))
-        -1:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] ^= $80 >> (x & 7)
+        1:                                      ' white
+            byte[o] |= mask
+        0:                                      ' black
+            byte[o] &= !mask
+        -1:                                     ' inverse
+            byte[o] ^= mask
         other:
             return
-#endif
 
 
 #ifndef GFX_DIRECT
@@ -512,7 +528,7 @@ PUB reset() | tmp
 
 PUB show() | tmp
 ' Send the draw buffer to the display
-    draw_area(0, 0, _disp_xmax, _disp_ymax)
+    draw_area(0, 0, XMAX, YMAX)
     disp_pos(0, 0)
 
     repeat
@@ -581,14 +597,15 @@ PRI writereg(c, len, p_src)
 
 DAT
 
-    _lut_2p9_bw_full    byte    $02, $02, $01, $11, $12, $12, $22, $22, $66, $69
-                        byte    $69, $59, $58, $99, $99, $88, $00, $00, $00, $00
-                        byte    $F8, $B4, $13, $51, $35, $51, $51, $19, $01, $00
+    ' 2.9in E029A01, BW, full update
+    _lut_e029a01_bw_full    byte    $02, $02, $01, $11, $12, $12, $22, $22, $66, $69
+                            byte    $69, $59, $58, $99, $99, $88, $00, $00, $00, $00
+                            byte    $F8, $B4, $13, $51, $35, $51, $51, $19, $01, $00
 
 
 DAT
 {
-Copyright 2025 Jesse Burt
+Copyright 2026 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
