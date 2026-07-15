@@ -20,8 +20,8 @@ OBJ
     cfg:    "boardcfg.p2eval"
     fnt:    "font.5x8"
     ser:    "com.serial.terminal.ansi" | SER_BAUD=2_000_000
-    epaper: "display.epaper.il3820" | WIDTH=122, HEIGHT=250, ...
-                                        CS=8, SCK=9, MOSI=10, DC=11, RST=12, BUSY=13, ...
+    epaper: "display.epaper.il3820" | WIDTH=128, HEIGHT=296, ...
+                                        CS=0, SCK=1, MOSI=2, DC=3, RST=4, BUSY=5, ...
                                         SPI_FREQ=4_000_000
 
 
@@ -39,7 +39,6 @@ PUB main()
         repeat
 
     epaper.preset_2p9_bw()
-    epaper.set_rotation(90)
     demo()                                      ' start demo
     repeat
 
