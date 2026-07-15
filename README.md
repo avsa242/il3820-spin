@@ -30,10 +30,10 @@ P2/SPIN2:
 
 | Processor | Language | Compiler               | Backend      | Status                |
 |-----------|----------|------------------------|--------------|-----------------------|
-| P1        | SPIN1    | FlexSpin (7.6.5)       | Bytecode     | OK                    |
-| P1        | SPIN1    | FlexSpin (7.6.5)       | Native/PASM  | OK                    |
-| P2        | SPIN2    | FlexSpin (7.6.5)       | NuCode       | Runtime issues        |
-| P2        | SPIN2    | FlexSpin (7.6.5)       | Native/PASM2 | OK                    |
+| P1        | SPIN1    | FlexSpin (7.6.12-beta) | Bytecode     | OK                    |
+| P1        | SPIN1    | FlexSpin (7.6.12-beta) | Native/PASM  | OK                    |
+| P2        | SPIN2    | FlexSpin (7.6.12-beta) | NuCode       | OK                    |
+| P2        | SPIN2    | FlexSpin (7.6.12-beta) | Native/PASM2 | OK                    |
 
 (other versions or toolchains not listed are __not supported__, and _may or may not_ work)
 

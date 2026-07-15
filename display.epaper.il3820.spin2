@@ -4,7 +4,7 @@
     Description:    Driver for the IL3820 electrophoretic display controller
     Author:         Jesse Burt
     Started:        Jan 27, 2021
-    Updated:        Mar 28, 2026
+    Updated:        Jul 15, 2026
     Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -493,10 +493,23 @@ PUB plot(x, y, c) | t, o, mask
 
 
 #ifndef GFX_DIRECT
-PUB point(x, y): c
+PUB point(x, y): c | t
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
+
+    case _rotation
+        1:                                      ' 90deg CW
+            t := x
+            x := WIDTH - 1 - y
+            y := t
+        2:                                      ' 180deg
+            x := WIDTH - x - 1
+            y := HEIGHT - y - 1
+        3:                                      ' 270deg
+            t := x
+            x := y
+            y := HEIGHT-1-t
 
     return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
 #endif
