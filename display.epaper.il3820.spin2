@@ -152,7 +152,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, SCK_FREQ, DISP_
     if (    lookdown(CS_PIN: 0..63) and lookdown(SCK_PIN: 0..63) and ...
             lookdown(MOSI_PIN: 0..63) and lookdown(DC_PIN: 0..63) and ...
             lookdown(RST_PIN: 0..63) and lookdown(BUSY_PIN: 0..63) )
-        if ( s := spi.init(SCK_PIN, MOSI_PIN, MOSI_PIN, core.SPI_MODE) )
+        if ( s := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE, SCK_FREQ) )
             _CS := CS_PIN
             _DC := DC_PIN
             _RST := RST_PIN
